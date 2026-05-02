@@ -60,7 +60,6 @@ export async function analyzeStock(ticker: string): Promise<Signal | null> {
     saveSignal(signal)
     return signal
   } catch (err) {
-    console.error(`Claude analysis error for ${ticker}:`, err)
-    return getSignal(ticker)
+    throw err
   }
 }

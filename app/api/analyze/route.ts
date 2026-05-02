@@ -13,10 +13,17 @@ export async function POST(req: NextRequest) {
     }
 
     const results = []
+    const errors: string[] = []
     for (const sym of symbols) {
       const prevSignal = getSignal(sym)
-      const newSignal = await analyzeStock(sym)
-      if (!newSignal) continue
+      let newSignal
+      try {
+        newSignal = await analyzeStock(sym)
+      } catch (e) {
+        errors.push(`${sym}: ${String(e)}`)
+        continue
+      }
+      if (!newSignal) { errors.push(`${sym}: analyzeStock returned null`); continue }
 
       const changed = prevSignal?.signal !== newSignal.signal
       const actionable = newSignal.signal !== 'HOLD'
@@ -33,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     const settings = getSettings()
     saveSettings({ ...settings, lastAnalysisRun: new Date().toISOString() })
-    return NextResponse.json({ analyzed: results.length, results })
+    return NextResponse.json({ analyzed: results.length, results, errors })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

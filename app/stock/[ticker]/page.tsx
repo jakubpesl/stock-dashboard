@@ -54,12 +54,13 @@ export default function StockDetail() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tickers: [ticker] }),
       })
-      const json = await res.json() as { results?: Signal[]; error?: string; analyzed?: number }
+      const json = await res.json() as { results?: Signal[]; error?: string; errors?: string[]; analyzed?: number }
       if (json.results?.[0]) {
         setSignal(json.results[0])
         setAnalyzeMsg('Analýza dokončena.')
       } else {
-        setAnalyzeMsg(json.error ?? 'Analýza selhala — zkontroluj ANTHROPIC_API_KEY v Vercelu.')
+        const detail = json.errors?.join('; ') ?? json.error ?? 'Neznámá chyba'
+        setAnalyzeMsg(`Chyba: ${detail}`)
       }
     } catch (e) {
       setAnalyzeMsg(`Chyba: ${String(e)}`)
