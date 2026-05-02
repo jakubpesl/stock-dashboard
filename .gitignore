@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.env.local
+data/cache/
+data/signals/
+data/push-subscriptions.json
+*.log
