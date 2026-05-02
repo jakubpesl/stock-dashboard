@@ -37,6 +37,7 @@ export default function StockDetail() {
   const [data, setData] = useState<MarketData | null>(null)
   const [signal, setSignal] = useState<Signal | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
+  const [analyzeMsg, setAnalyzeMsg] = useState('')
 
   useEffect(() => {
     fetch(`/api/stock/${ticker}`)
@@ -46,14 +47,25 @@ export default function StockDetail() {
 
   async function analyze() {
     setAnalyzing(true)
-    const res = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker }),
-    })
-    const json = await res.json()
-    if (json.results?.[0]) setSignal(json.results[0])
+    setAnalyzeMsg('')
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickers: [ticker] }),
+      })
+      const json = await res.json() as { results?: Signal[]; error?: string; analyzed?: number }
+      if (json.results?.[0]) {
+        setSignal(json.results[0])
+        setAnalyzeMsg('Analýza dokončena.')
+      } else {
+        setAnalyzeMsg(json.error ?? 'Analýza selhala — zkontroluj ANTHROPIC_API_KEY v Vercelu.')
+      }
+    } catch (e) {
+      setAnalyzeMsg(`Chyba: ${String(e)}`)
+    }
     setAnalyzing(false)
+    setTimeout(() => setAnalyzeMsg(''), 6000)
   }
 
   const chartData = data ? data[tabMap[tab]] : []
@@ -87,10 +99,17 @@ export default function StockDetail() {
             </div>
           )}
         </div>
-        <button onClick={analyze} disabled={analyzing}
-          className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/80 disabled:opacity-50 text-white rounded-lg font-medium transition-colors">
-          {analyzing ? '🤖 Analyzuji…' : '🤖 Analyzovat nyní'}
-        </button>
+        <div className="flex flex-col items-end gap-2">
+          <button onClick={analyze} disabled={analyzing}
+            className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/80 disabled:opacity-50 text-white rounded-lg font-medium transition-colors">
+            {analyzing ? '🤖 Analyzuji…' : '🤖 Analyzovat nyní'}
+          </button>
+          {analyzeMsg && (
+            <span className={`text-xs ${analyzeMsg.startsWith('Analýza dokončena') ? 'text-[#22c55e]' : 'text-[#ef4444]'}`}>
+              {analyzeMsg}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
