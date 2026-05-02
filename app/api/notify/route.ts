@@ -12,6 +12,8 @@ export async function POST() {
     risk: 'LOW',
     price: 100,
     analyzedAt: new Date().toISOString(),
+    newsSentiment: [],
+    headlines: [],
   }
   const settings = getSettings()
   const subs = getPushSubscriptions()
