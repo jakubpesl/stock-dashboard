@@ -1,4 +1,6 @@
-import yahooFinance from 'yahoo-finance2'
+import _yahooFinance from 'yahoo-finance2'
+// bundler moduleResolution types the default export as constructor; cast to instance type
+const yahooFinance = _yahooFinance as unknown as InstanceType<typeof _yahooFinance>
 import { CacheEntry, getCache, saveCache, isCacheFresh } from './storage'
 
 export async function fetchStockData(ticker: string): Promise<CacheEntry | null> {
