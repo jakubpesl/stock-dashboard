@@ -103,7 +103,9 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold text-[#f1f5f9] mb-8">Nastavení</h1>
 
       {msg && (
-        <div className="mb-4 px-4 py-2 bg-[#6c63ff]/20 text-[#6c63ff] rounded-lg text-sm">{msg}</div>
+        <div className="fixed bottom-6 right-6 z-50 px-5 py-3 bg-[#1a1a24] border border-[#6c63ff] text-[#f1f5f9] rounded-xl shadow-2xl text-sm font-medium animate-fade-in">
+          {msg}
+        </div>
       )}
 
       {/* WATCHLIST */}
