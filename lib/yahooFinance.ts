@@ -71,9 +71,12 @@ export async function fetchStockData(ticker: string): Promise<CacheEntry | null>
     history.sort((a, b) => a.date.localeCompare(b.date))
 
     const price = parseFloat((meta.regularMarketPrice ?? 0).toFixed(2))
-    const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? price
-    const change = parseFloat((price - prevClose).toFixed(2))
-    const changePercent = prevClose ? parseFloat(((change / prevClose) * 100).toFixed(2)) : 0
+    // Use second-to-last historical point for day-over-day change (chartPreviousClose is start of range)
+    const prevDayClose = history.length >= 2
+      ? history[history.length - 2].close
+      : (meta.chartPreviousClose ?? meta.previousClose ?? price)
+    const change = parseFloat((price - prevDayClose).toFixed(2))
+    const changePercent = prevDayClose ? parseFloat(((change / prevDayClose) * 100).toFixed(2)) : 0
 
     const lastIdx = Math.max(0, closes.length - 1)
     const open = parseFloat(((meta.regularMarketOpen ?? q.open?.[lastIdx] ?? price) as number).toFixed(2))
