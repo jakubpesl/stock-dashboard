@@ -44,6 +44,8 @@ export interface Signal {
   risk: 'LOW' | 'MEDIUM' | 'HIGH'
   price: number
   analyzedAt: string
+  priceTarget?: number
+  horizon?: string
   newsSentiment: { headline: string; sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' }[]
   headlines: { title: string; url: string; source: string; publishedAt: string }[]
 }

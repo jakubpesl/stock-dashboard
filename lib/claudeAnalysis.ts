@@ -24,7 +24,7 @@ export async function analyzeStock(ticker: string): Promise<Signal | null> {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 600,
-      system: 'You are a conservative personal finance assistant. Analyze stock data and news headlines. Respond ONLY with valid JSON, no markdown, no text outside JSON. Return exactly: {"signal": "BUY" or "HOLD" or "SELL", "confidence": number 0-100, "reasoning": "max 2 sentences in Czech", "risk": "LOW" or "MEDIUM" or "HIGH", "newsSentiment": [{"headline": "...", "sentiment": "POSITIVE" or "NEUTRAL" or "NEGATIVE"}]}. Be conservative — default to HOLD unless evidence is clear.',
+      system: 'You are a conservative personal finance assistant. Analyze stock data and news headlines. Respond ONLY with valid JSON, no markdown, no text outside JSON. Return exactly: {"signal": "BUY" or "HOLD" or "SELL", "confidence": number 0-100, "reasoning": "max 2 sentences in Czech", "risk": "LOW" or "MEDIUM" or "HIGH", "priceTarget": number or null, "horizon": "1 month" or "3 months" or "6 months" or null, "newsSentiment": [{"headline": "...", "sentiment": "POSITIVE" or "NEUTRAL" or "NEGATIVE"}]}. priceTarget is your 12-month price target in USD. Be conservative — default to HOLD unless evidence is clear.',
       messages: [
         {
           role: 'user',
@@ -40,6 +40,8 @@ export async function analyzeStock(ticker: string): Promise<Signal | null> {
       confidence: number
       reasoning: string
       risk: string
+      priceTarget?: number | null
+      horizon?: string | null
       newsSentiment?: { headline: string; sentiment: string }[]
     }
 
@@ -51,6 +53,8 @@ export async function analyzeStock(ticker: string): Promise<Signal | null> {
       risk: parsed.risk as Signal['risk'],
       price: data.price,
       analyzedAt: new Date().toISOString(),
+      priceTarget: parsed.priceTarget ?? undefined,
+      horizon: parsed.horizon ?? undefined,
       newsSentiment: (parsed.newsSentiment ?? []).map((s) => ({
         headline: s.headline,
         sentiment: s.sentiment as 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE',

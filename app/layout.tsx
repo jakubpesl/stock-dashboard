@@ -23,6 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/" className="text-[#94a3b8] hover:text-[#f1f5f9] transition-colors">
                 Dashboard
               </Link>
+              <Link href="/scanner" className="text-[#94a3b8] hover:text-[#f1f5f9] transition-colors">
+                Scanner
+              </Link>
               <Link href="/settings" className="text-[#94a3b8] hover:text-[#f1f5f9] transition-colors">
                 Nastavení
               </Link>
