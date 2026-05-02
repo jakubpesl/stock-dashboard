@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getWatchlist, getSignal, saveSettings, getSettings } from '@/lib/storage'
 import { analyzeStock } from '@/lib/claudeAnalysis'
 import { sendEmailNotification, sendPushNotification } from '@/lib/notifications'
-import { getPushSubscriptions } from '@/lib/storage'
+import { getSignal, saveSettings, getSettings, getPushSubscriptions } from '@/lib/storage'
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}))
-    const ticker: string | undefined = body.ticker
-    const { tickers } = getWatchlist()
-    const targets = ticker ? tickers.filter((t) => t.symbol === ticker) : tickers
+    const body = await req.json().catch(() => ({})) as { ticker?: string; tickers?: string[] }
+    const symbols: string[] = body.tickers ?? (body.ticker ? [body.ticker] : [])
+
+    if (symbols.length === 0) {
+      return NextResponse.json({ error: 'No tickers provided' }, { status: 400 })
+    }
 
     const results = []
-    for (const t of targets) {
-      const prevSignal = getSignal(t.symbol)
-      const newSignal = await analyzeStock(t.symbol)
+    for (const sym of symbols) {
+      const prevSignal = getSignal(sym)
+      const newSignal = await analyzeStock(sym)
       if (!newSignal) continue
 
       const changed = prevSignal?.signal !== newSignal.signal
       const actionable = newSignal.signal !== 'HOLD'
-      if (changed && actionable && t.notificationsEnabled) {
+      if (changed && actionable) {
         const settings = getSettings()
         const subs = getPushSubscriptions()
         await Promise.allSettled([

@@ -4,6 +4,8 @@ import Link from 'next/link'
 import StockCard from '@/components/StockCard'
 import SkeletonCard from '@/components/SkeletonCard'
 
+const WL_KEY = 'stock-watchlist'
+
 interface Ticker { symbol: string; alias: string }
 interface StockEntry {
   data: { price: number; changePercent: number; history7d: { date: string; close: number }[] } | null
@@ -16,12 +18,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  const loadAll = useCallback(async () => {
-    const wl = await fetch('/api/watchlist').then((r) => r.json())
-    setTickers(wl.tickers ?? [])
+  const loadStocks = useCallback(async (list: Ticker[]) => {
     const results: Record<string, StockEntry> = {}
     await Promise.allSettled(
-      (wl.tickers ?? []).map(async (t: Ticker) => {
+      list.map(async (t) => {
         const json = await fetch(`/api/stock/${t.symbol}`).then((r) => r.json())
         results[t.symbol] = { data: json.data, signal: json.signal }
       })
@@ -30,12 +30,17 @@ export default function Dashboard() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { loadAll() }, [loadAll])
+  useEffect(() => {
+    const stored = localStorage.getItem(WL_KEY)
+    const list: Ticker[] = stored ? (JSON.parse(stored) as Ticker[]) : []
+    setTickers(list)
+    loadStocks(list)
+  }, [loadStocks])
 
   async function handleRefresh() {
     setRefreshing(true)
     await fetch('/api/refresh', { method: 'POST' })
-    await loadAll()
+    await loadStocks(tickers)
     setRefreshing(false)
   }
 

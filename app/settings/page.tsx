@@ -2,12 +2,17 @@
 import { useState, useEffect } from 'react'
 import NotificationToggle from '@/components/NotificationToggle'
 
+const WL_KEY = 'stock-watchlist'
+const SET_KEY = 'stock-settings'
+
 interface Ticker { symbol: string; alias: string; notificationsEnabled: boolean }
 interface Settings { notificationEmail: string; analysisInterval: string; lastAnalysisRun: string | null }
 
+const DEFAULT_SETTINGS: Settings = { notificationEmail: '', analysisInterval: '6h', lastAnalysisRun: null }
+
 export default function SettingsPage() {
   const [tickers, setTickers] = useState<Ticker[]>([])
-  const [settings, setSettings] = useState<Settings>({ notificationEmail: '', analysisInterval: '6h', lastAnalysisRun: null })
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [symbol, setSymbol] = useState('')
   const [alias, setAlias] = useState('')
   const [adding, setAdding] = useState(false)
@@ -16,41 +21,66 @@ export default function SettingsPage() {
 
   function flash(text: string) { setMsg(text); setTimeout(() => setMsg(''), 3000) }
 
+  function saveWL(list: Ticker[]) {
+    localStorage.setItem(WL_KEY, JSON.stringify(list.map(({ symbol, alias }) => ({ symbol, alias }))))
+  }
+
   useEffect(() => {
-    Promise.all([
-      fetch('/api/watchlist').then((r) => r.json()),
-      fetch('/api/settings').then((r) => r.json()),
-    ]).then(([wl, s]) => { setTickers(wl.tickers ?? []); setSettings(s) })
+    const wl = localStorage.getItem(WL_KEY)
+    const set = localStorage.getItem(SET_KEY)
+    setTickers(wl ? (JSON.parse(wl) as Ticker[]).map((t) => ({ ...t, notificationsEnabled: t.notificationsEnabled ?? true }) ) : [])
+    setSettings(set ? { ...DEFAULT_SETTINGS, ...JSON.parse(set) as Partial<Settings> } : DEFAULT_SETTINGS)
   }, [])
 
-  async function addTicker() {
+  function addTicker() {
     if (!symbol) return
     setAdding(true)
-    const res = await fetch('/api/watchlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symbol, alias: alias || symbol }),
-    })
-    const json = await res.json()
-    if (json.ok) { setTickers((p) => [...p, json.ticker]); setSymbol(''); setAlias(''); flash('Ticker přidán.') }
-    else flash(json.error ?? 'Chyba')
+    const sym = symbol.trim().toUpperCase()
+    if (tickers.find((t) => t.symbol === sym)) { flash('Ticker již existuje.'); setAdding(false); return }
+    if (tickers.length >= 10) { flash('Maximum 10 tickerů.'); setAdding(false); return }
+    const ticker: Ticker = { symbol: sym, alias: alias.trim() || sym, notificationsEnabled: true }
+    const updated = [...tickers, ticker]
+    setTickers(updated)
+    saveWL(updated)
+    setSymbol('')
+    setAlias('')
+    flash('Ticker přidán.')
     setAdding(false)
   }
 
-  async function deleteTicker(sym: string) {
-    await fetch(`/api/watchlist?symbol=${sym}`, { method: 'DELETE' })
-    setTickers((p) => p.filter((t) => t.symbol !== sym))
+  function deleteTicker(sym: string) {
+    const updated = tickers.filter((t) => t.symbol !== sym)
+    setTickers(updated)
+    saveWL(updated)
   }
 
-  async function saveSettings() {
-    await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) })
+  function toggleNotif(sym: string, val: boolean) {
+    const updated = tickers.map((t) => t.symbol === sym ? { ...t, notificationsEnabled: val } : t)
+    setTickers(updated)
+    localStorage.setItem(WL_KEY, JSON.stringify(updated))
+  }
+
+  function saveSettings() {
+    localStorage.setItem(SET_KEY, JSON.stringify(settings))
     flash('Nastavení uloženo.')
   }
 
   async function runAnalysis() {
+    if (tickers.length === 0) { flash('Přidej nejprve ticker.'); return }
     setAnalyzing(true)
-    await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
-    flash('Analýza dokončena.')
+    try {
+      await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickers: tickers.map((t) => t.symbol) }),
+      })
+      const updated = { ...settings, lastAnalysisRun: new Date().toISOString() }
+      setSettings(updated)
+      localStorage.setItem(SET_KEY, JSON.stringify(updated))
+      flash('Analýza dokončena.')
+    } catch {
+      flash('Chyba při analýze.')
+    }
     setAnalyzing(false)
   }
 
@@ -60,7 +90,7 @@ export default function SettingsPage() {
     if (perm !== 'granted') return alert('Notifikace zamítnuty.')
     const reg = await navigator.serviceWorker.ready
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-    if (!vapidKey) return alert('VAPID klíč není nastaven v .env.local')
+    if (!vapidKey) return alert('VAPID klíč není nastaven.')
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey })
     await fetch('/api/push-subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub) })
     flash('Push notifikace aktivovány.')
@@ -102,7 +132,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-3">
                 <span className="text-xs text-[#94a3b8]">Notif.</span>
                 <NotificationToggle symbol={t.symbol} enabled={t.notificationsEnabled}
-                  onChange={(v) => setTickers((p) => p.map((x) => x.symbol === t.symbol ? { ...x, notificationsEnabled: v } : x))} />
+                  onChange={(v) => toggleNotif(t.symbol, v)} />
                 <button onClick={() => deleteTicker(t.symbol)}
                   className="text-[#ef4444] hover:text-[#ef4444]/70 text-sm transition-colors">
                   Smazat
@@ -166,19 +196,14 @@ export default function SettingsPage() {
         <h2 className="font-semibold text-lg text-[#f1f5f9] mb-2">O aplikaci</h2>
         <p className="text-[#94a3b8] text-sm mb-3">Zdroje dat — bez registrace, zdarma:</p>
         <ul className="text-sm space-y-2 text-[#94a3b8]">
-          <li>📈 <strong className="text-[#f1f5f9]">Ceny akcií:</strong> Yahoo Finance (yahoo-finance2)</li>
+          <li>📈 <strong className="text-[#f1f5f9]">Ceny akcií:</strong> Yahoo Finance API</li>
           <li>📰 <strong className="text-[#f1f5f9]">Zprávy:</strong> Yahoo Finance RSS + Google News RSS</li>
           <li>🤖 <strong className="text-[#f1f5f9]">AI analýza a sentiment:</strong> Claude (Anthropic)</li>
         </ul>
         <p className="text-[#94a3b8] text-sm mt-3">
           Jediný požadovaný API klíč:{' '}
           <code className="bg-white/10 px-1 rounded text-[#f1f5f9]">ANTHROPIC_API_KEY</code>{' '}
-          v souboru{' '}
-          <code className="bg-white/10 px-1 rounded text-[#f1f5f9]">.env.local</code> —{' '}
-          viz{' '}
-          <a href="https://console.anthropic.com" target="_blank" className="text-[#6c63ff] underline">
-            console.anthropic.com
-          </a>
+          nastaven v Vercel Environment Variables.
         </p>
       </section>
 
