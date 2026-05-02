@@ -13,28 +13,29 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="cs">
-      <body className={`${inter.className} min-h-screen bg-background text-primary`}>
-        <nav className="border-b border-[#2a2a3a] bg-[#1a1a24]/80 backdrop-blur-sm sticky top-0 z-50">
+      <body className={`${inter.className} min-h-screen bg-slate-100 text-slate-900`}>
+        <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-            <Link href="/" className="font-bold text-lg text-[#6c63ff]">
-              📊 Stock Dashboard
+            <Link href="/" className="font-bold text-lg text-[#6c63ff] flex items-center gap-2">
+              <span className="text-xl">📊</span>
+              <span>Stock Dashboard</span>
             </Link>
-            <div className="flex gap-6 text-sm">
-              <Link href="/" className="text-[#94a3b8] hover:text-[#f1f5f9] transition-colors">
+            <div className="flex gap-1 text-sm">
+              <Link href="/" className="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium">
                 Dashboard
               </Link>
-              <Link href="/scanner" className="text-[#94a3b8] hover:text-[#f1f5f9] transition-colors">
+              <Link href="/scanner" className="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium">
                 Scanner
               </Link>
-              <Link href="/settings" className="text-[#94a3b8] hover:text-[#f1f5f9] transition-colors">
+              <Link href="/settings" className="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium">
                 Nastavení
               </Link>
             </div>
           </div>
         </nav>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">{children}</main>
-        <footer className="border-t border-[#2a2a3a] mt-16 py-6 text-center">
-          <p className="text-[#94a3b8] text-sm">
+        <footer className="border-t border-slate-200 bg-white mt-16 py-6 text-center">
+          <p className="text-slate-400 text-sm">
             ⚠️ Tato aplikace slouží pouze k informačním účelům a nepředstavuje finanční poradenství.
           </p>
         </footer>

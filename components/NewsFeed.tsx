@@ -4,23 +4,20 @@ interface SentimentItem { headline: string; sentiment: 'POSITIVE' | 'NEUTRAL' | 
 interface Headline { title: string; url: string; source: string; publishedAt: string }
 
 const sentimentColors = {
-  POSITIVE: 'text-[#22c55e] bg-[#22c55e]/10',
-  NEUTRAL: 'text-[#94a3b8] bg-white/5',
-  NEGATIVE: 'text-[#ef4444] bg-[#ef4444]/10',
+  POSITIVE: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+  NEUTRAL: 'text-slate-500 bg-slate-100 border-slate-200',
+  NEGATIVE: 'text-red-600 bg-red-50 border-red-200',
 }
 const sentimentLabels = { POSITIVE: 'Pozitivní', NEUTRAL: 'Neutrální', NEGATIVE: 'Negativní' }
 
-export default function NewsFeed({
-  headlines,
-  newsSentiment,
-}: {
+export default function NewsFeed({ headlines, newsSentiment }: {
   headlines?: Headline[]
   newsSentiment?: SentimentItem[]
 }) {
   if (!headlines || headlines.length === 0) {
     return (
-      <div className="text-[#94a3b8] text-sm py-6 text-center">
-        Zprávy nejsou k dispozici — spusťte AI analýzu pro načtení aktuálních zpráv.
+      <div className="text-slate-400 text-sm py-6 text-center italic">
+        Spusťte AI analýzu pro načtení aktuálních zpráv.
       </div>
     )
   }
@@ -31,18 +28,18 @@ export default function NewsFeed({
         const sentItem = newsSentiment?.find((s) => s.headline === article.title) ?? newsSentiment?.[i]
         return (
           <a key={i} href={article.url} target="_blank" rel="noopener noreferrer"
-            className="p-4 bg-white/5 rounded-lg border border-[#2a2a3a] hover:border-[#6c63ff]/40 transition-colors group">
+            className="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-[#6c63ff]/40 hover:bg-white transition-all group">
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm text-[#f1f5f9] group-hover:text-[#6c63ff] transition-colors leading-snug">
+              <p className="text-sm text-slate-700 group-hover:text-[#6c63ff] transition-colors leading-snug font-medium">
                 {article.title}
               </p>
               {sentItem && (
-                <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${sentimentColors[sentItem.sentiment]}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 font-medium ${sentimentColors[sentItem.sentiment]}`}>
                   {sentimentLabels[sentItem.sentiment]}
                 </span>
               )}
             </div>
-            <div className="flex gap-3 mt-2 text-xs text-[#94a3b8]">
+            <div className="flex gap-3 mt-2 text-xs text-slate-400">
               <span>{article.source}</span>
               <span>{article.publishedAt?.slice(0, 10)}</span>
             </div>

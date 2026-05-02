@@ -2,18 +2,18 @@
 
 type Signal = 'BUY' | 'HOLD' | 'SELL'
 const labels: Record<Signal, string> = { BUY: 'KUP', HOLD: 'DRŽ', SELL: 'PRODEJ' }
-const icons: Record<Signal, string> = { BUY: '🟢', HOLD: '🟡', SELL: '🔴' }
 const colors: Record<Signal, string> = {
-  BUY: 'bg-[#22c55e]/15 text-[#22c55e] border-[#22c55e]/30',
-  HOLD: 'bg-[#eab308]/15 text-[#eab308] border-[#eab308]/30',
-  SELL: 'bg-[#ef4444]/15 text-[#ef4444] border-[#ef4444]/30',
+  BUY: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  HOLD: 'bg-amber-50 text-amber-700 border-amber-200',
+  SELL: 'bg-red-50 text-red-600 border-red-200',
+}
+const dots: Record<Signal, string> = {
+  BUY: 'bg-emerald-500',
+  HOLD: 'bg-amber-500',
+  SELL: 'bg-red-500',
 }
 
-export default function AISignalBadge({
-  signal,
-  confidence,
-  outdated,
-}: {
+export default function AISignalBadge({ signal, confidence, outdated }: {
   signal: Signal
   confidence: number
   outdated?: boolean
@@ -21,10 +21,11 @@ export default function AISignalBadge({
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-sm font-bold ${colors[signal]}`}>
-        {icons[signal]} {labels[signal]} {confidence}%
+        <span className={`w-2 h-2 rounded-full ${dots[signal]}`} />
+        {labels[signal]} · {confidence}%
       </span>
       {outdated && (
-        <span className="text-xs text-[#94a3b8] bg-white/5 px-2 py-0.5 rounded-full">
+        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
           Zastaralá analýza
         </span>
       )}

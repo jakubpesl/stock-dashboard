@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
-body { background: #0f0f14; color: #f1f5f9; }
+:root { color-scheme: light; }
+body { background: #f1f5f9; color: #0f172a; }
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
