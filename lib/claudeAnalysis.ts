@@ -33,7 +33,8 @@ export async function analyzeStock(ticker: string): Promise<Signal | null> {
       ],
     })
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : '{}'
+    const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'
+    const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
     const parsed = JSON.parse(text) as {
       signal: string
       confidence: number
