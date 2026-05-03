@@ -41,6 +41,8 @@ export interface TermSignal {
   confidence: number
   reasoning: string
   priceTarget?: number
+  stopLoss?: number
+  riskReward?: number
 }
 
 export interface Signal {

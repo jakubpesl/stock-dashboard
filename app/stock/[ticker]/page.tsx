@@ -19,7 +19,8 @@ interface MarketData {
   history7d: Point[]; history1m: Point[]; history3m: Point[]; history1y: Point[]
 }
 interface TermSignal {
-  signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; reasoning: string; priceTarget?: number
+  signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; reasoning: string
+  priceTarget?: number; stopLoss?: number; riskReward?: number
 }
 interface Signal {
   signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; risk: string
@@ -199,6 +200,14 @@ export default function StockDetail() {
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Krátkodobý · 1–4 týdny</p>
                   <AISignalBadge signal={signal.shortTerm.signal} confidence={signal.shortTerm.confidence} />
                   <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.shortTerm.reasoning}</p>
+                  <div className="flex flex-wrap gap-3 mt-3 text-xs">
+                    {signal.shortTerm.stopLoss && (
+                      <span className="text-slate-400">Stop-loss: <span className="text-red-500 font-semibold">${signal.shortTerm.stopLoss}</span></span>
+                    )}
+                    {signal.shortTerm.riskReward && (
+                      <span className="text-slate-400">R:R: <span className="text-emerald-600 font-semibold">1:{signal.shortTerm.riskReward.toFixed(1)}</span></span>
+                    )}
+                  </div>
                 </div>
               )}
               {signal.longTerm && (
@@ -206,11 +215,17 @@ export default function StockDetail() {
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Dlouhodobý · 3–12 měsíců</p>
                   <AISignalBadge signal={signal.longTerm.signal} confidence={signal.longTerm.confidence} />
                   <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.longTerm.reasoning}</p>
-                  {signal.longTerm.priceTarget && (
-                    <p className="text-xs mt-2 text-slate-400">
-                      Cílová cena: <span className="text-[#6c63ff] font-bold">${signal.longTerm.priceTarget}</span>
-                    </p>
-                  )}
+                  <div className="flex flex-wrap gap-3 mt-3 text-xs">
+                    {signal.longTerm.priceTarget && (
+                      <span className="text-slate-400">Cíl: <span className="text-[#6c63ff] font-semibold">${signal.longTerm.priceTarget}</span></span>
+                    )}
+                    {signal.longTerm.stopLoss && (
+                      <span className="text-slate-400">Stop-loss: <span className="text-red-500 font-semibold">${signal.longTerm.stopLoss}</span></span>
+                    )}
+                    {signal.longTerm.riskReward && (
+                      <span className="text-slate-400">R:R: <span className="text-emerald-600 font-semibold">1:{signal.longTerm.riskReward.toFixed(1)}</span></span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
