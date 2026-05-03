@@ -40,7 +40,7 @@ function fmtCap(n: number) {
 export default function StockDetail() {
   const { ticker } = useParams<{ ticker: string }>()
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('1M')
+  const [tab, setTab] = useState<Tab>('3M')
   const [data, setData] = useState<MarketData | null>(null)
   const [signal, setSignal] = useState<Signal | null>(null)
   const [earningsDate, setEarningsDate] = useState<string | null>(null)
