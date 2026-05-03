@@ -5,8 +5,10 @@
 :root { color-scheme: light; }
 
 body {
-  background: #f8fafc;
-  background-image: radial-gradient(ellipse at 80% 0%, rgba(108,99,255,0.04) 0%, transparent 60%);
+  background-color: #f8fafc;
+  background-image:
+    radial-gradient(ellipse at 80% 0%, rgba(108,99,255,0.05) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 100%, rgba(108,99,255,0.03) 0%, transparent 50%);
   color: #0f172a;
   min-height: 100vh;
 }
@@ -16,6 +18,11 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Chart line glow */
+.chart-glow .recharts-area-curve {
+  filter: drop-shadow(0 0 6px var(--chart-color, rgba(108,99,255,0.6)));
+}
 
 /* Animations */
 @keyframes fade-in {
@@ -34,3 +41,8 @@ body {
   animation: shimmer 1.5s infinite;
   border-radius: 0.5rem;
 }
+
+/* Signal badge glow */
+.signal-buy  { box-shadow: 0 0 0 3px rgba(16,185,129,0.12), 0 1px 3px rgba(16,185,129,0.1); }
+.signal-sell { box-shadow: 0 0 0 3px rgba(239,68,68,0.12),  0 1px 3px rgba(239,68,68,0.1); }
+.signal-hold { box-shadow: 0 0 0 3px rgba(245,158,11,0.12), 0 1px 3px rgba(245,158,11,0.1); }

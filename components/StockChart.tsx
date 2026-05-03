@@ -2,7 +2,7 @@
 import { useId, useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Area, Line,
-  XAxis, YAxis, Tooltip, ReferenceLine,
+  XAxis, YAxis, Tooltip, ReferenceLine, CartesianGrid,
 } from 'recharts'
 
 interface Point { date: string; close: number }
@@ -117,14 +117,16 @@ export default function StockChart({ data, mini = false }: { data: Point[]; mini
         </div>
       )}
       <ResponsiveContainer width="100%" height={300}>
-        <ComposedChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
+          className="chart-glow" style={{ '--chart-color': lineColor + '99' } as React.CSSProperties}>
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={lineColor} stopOpacity={0.28} />
-              <stop offset="55%" stopColor={lineColor} stopOpacity={0.06} />
+              <stop offset="0%" stopColor={lineColor} stopOpacity={0.3} />
+              <stop offset="40%" stopColor={lineColor} stopOpacity={0.1} />
               <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
             </linearGradient>
           </defs>
+          <CartesianGrid vertical={false} stroke="#f1f5f9" strokeDasharray="0" strokeWidth={1} />
           <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 11 }}
             tickLine={false} axisLine={false}
             tickFormatter={(v: string) => v.slice(5)} interval="preserveStartEnd" />

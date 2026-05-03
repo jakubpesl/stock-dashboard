@@ -3,18 +3,21 @@ import Link from 'next/link'
 import StockChart from './StockChart'
 
 interface Signal { signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; risk: string; analyzedAt: string }
-interface CacheEntry { price: number; changePercent: number; history7d: { date: string; close: number }[] }
+interface CacheEntry { price: number; changePercent: number; high52w: number; low52w: number; history7d: { date: string; close: number }[] }
 
 const signalCfg = {
-  BUY:  { label: 'KUP',    bar: 'bg-emerald-500', pill: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  HOLD: { label: 'DRŽ',    bar: 'bg-amber-400',   pill: 'bg-amber-50 text-amber-700 border-amber-200' },
-  SELL: { label: 'PRODEJ', bar: 'bg-red-500',      pill: 'bg-red-50 text-red-600 border-red-200' },
+  BUY:  { label: 'KUP',    bar: 'bg-emerald-500', pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', glow: 'signal-buy' },
+  HOLD: { label: 'DRŽ',    bar: 'bg-amber-400',   pill: 'bg-amber-50 text-amber-700 border-amber-200',       glow: 'signal-hold' },
+  SELL: { label: 'PRODEJ', bar: 'bg-red-500',      pill: 'bg-red-50 text-red-600 border-red-200',            glow: 'signal-sell' },
 }
 
 export default function StockCard({ symbol, alias, data, signal }: {
   symbol: string; alias: string; data: CacheEntry | null; signal: Signal | null
 }) {
   const isUp = (data?.changePercent ?? 0) >= 0
+  const range52w = data && data.high52w > data.low52w
+    ? Math.round(((data.price - data.low52w) / (data.high52w - data.low52w)) * 100)
+    : null
   const hoursOld = signal ? (Date.now() - new Date(signal.analyzedAt).getTime()) / 3_600_000 : null
   const isOutdated = hoursOld !== null && hoursOld > 25
   const cfg = signal ? signalCfg[signal.signal] : null
@@ -48,11 +51,27 @@ export default function StockCard({ symbol, alias, data, signal }: {
         </div>
       )}
 
+      {/* 52w range bar */}
+      {range52w !== null && (
+        <div className="mb-3">
+          <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+            <span>52t min</span>
+            <span className="text-slate-500 font-medium">{range52w}% od minima</span>
+            <span>52t max</span>
+          </div>
+          <div className="h-1 bg-slate-100 rounded-full overflow-hidden relative">
+            <div className="h-full bg-gradient-to-r from-red-400 via-amber-400 to-emerald-500 opacity-30 absolute inset-0" />
+            <div className="absolute top-0 h-full w-0.5 bg-slate-700 rounded-full -translate-x-1/2"
+              style={{ left: `${range52w}%` }} />
+          </div>
+        </div>
+      )}
+
       {/* Signal */}
       {cfg && signal ? (
         <div className="mt-1 space-y-2">
           <div className="flex items-center justify-between">
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold ${cfg.pill}`}>
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold ${cfg.pill} ${cfg.glow}`}>
               {cfg.label}
             </span>
             <div className="flex items-center gap-1.5">

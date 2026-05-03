@@ -10,7 +10,7 @@ const SIG_KEY = 'stock-signals'
 
 interface Ticker { symbol: string; alias: string }
 interface StockEntry {
-  data: { price: number; changePercent: number; history7d: { date: string; close: number }[] } | null
+  data: { price: number; changePercent: number; high52w: number; low52w: number; history7d: { date: string; close: number }[] } | null
   signal: { signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; risk: string; analyzedAt: string } | null
 }
 
