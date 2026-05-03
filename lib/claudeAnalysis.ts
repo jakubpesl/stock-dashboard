@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { fetchStockData } from './yahooFinance'
 import { fetchNewsHeadlines, NewsHeadline } from './newsRss'
-import { calculateRSI, calcChange, calculateMACD, calcMA, priceVsMA } from './indicators'
+import { calculateRSI, calcChange, calculateMACD, calcMA, priceVsMA, detectCrossover } from './indicators'
 import { getSignal, saveSignal, Signal, TermSignal } from './storage'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -25,6 +25,24 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
     const distFrom52wLow  = data.low52w  > 0 ? parseFloat(((price - data.low52w)  / data.low52w  * 100).toFixed(1)) : null
     const distFrom52wHigh = data.high52w > 0 ? parseFloat(((price - data.high52w) / data.high52w * 100).toFixed(1)) : null
     const goldenCross = ma50 && ma200 ? (ma50 > ma200 ? 'MA50 above MA200 (bullish)' : 'MA50 below MA200 (bearish)') : null
+    const crossover = detectCrossover(closes)
+
+    // Market context — SPY trend (skip for SPY itself)
+    let marketContext = ''
+    if (ticker !== 'SPY') {
+      try {
+        const spy = await fetchStockData('SPY')
+        if (spy) {
+          const spyCloses = spy.history1y.map((h) => h.close)
+          const spyMA50  = calcMA(spyCloses, 50)
+          const spyMA200 = calcMA(spyCloses, 200)
+          const spyTrend = spyMA50 && spyMA200
+            ? (spyMA50 > spyMA200 ? 'BULLISH (MA50 above MA200)' : 'BEARISH (MA50 below MA200)')
+            : 'unknown'
+          marketContext = `S&P 500 (SPY): $${spy.price} (${spy.changePercent >= 0 ? '+' : ''}${spy.changePercent.toFixed(2)}% today), market trend: ${spyTrend}`
+        }
+      } catch { /* non-critical */ }
+    }
 
     const headlines: NewsHeadline[] = lite ? [] : await fetchNewsHeadlines(ticker)
     const headlineLines = headlines.length > 0
@@ -40,15 +58,17 @@ Price: $${price}
 RSI(14): ${rsi}
 vs MA50: ${priceVsMA(price, ma50)} | vs MA200: ${priceVsMA(price, ma200)}
 52w range: $${data.low52w}–$${data.high52w} (now ${distFrom52wHigh}% from high, +${distFrom52wLow}% from low)
-${goldenCross ? goldenCross : ''}`
+${goldenCross ?? ''}${crossover ? ` ⚡ RECENT ${crossover.toUpperCase().replace('_', ' ')}` : ''}
+${marketContext}`
       : `Ticker: ${ticker}
 Price: $${price}
 Changes: 1d ${data.changePercent}% | 7d ${pct7d}% | 30d ${pct30d}% | 90d ${pct90d}%
 RSI(14): ${rsi} ${rsi < 30 ? '← OVERSOLD' : rsi > 70 ? '← OVERBOUGHT' : ''}
 MACD: ${macd ? `${macd.macd > 0 ? 'positive' : 'negative'}, histogram ${macd.histogram > 0 ? 'rising ↑' : 'falling ↓'} (${macd.histogram})` : 'N/A'}
 vs MA50: ${priceVsMA(price, ma50)} | vs MA200: ${priceVsMA(price, ma200)}
-${goldenCross ?? ''}
+${goldenCross ?? ''}${crossover ? ` ⚡ RECENT ${crossover.toUpperCase().replace('_', ' ')} — strong signal!` : ''}
 52w high: $${data.high52w} (${distFrom52wHigh}%) | 52w low: $${data.low52w} (+${distFrom52wLow}%)
+${marketContext}
 Recent news:\n${headlineLines}`
 
     const system = lite

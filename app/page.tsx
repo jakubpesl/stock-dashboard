@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import StockCard from '@/components/StockCard'
 import SkeletonCard from '@/components/SkeletonCard'
+import MarketContext from '@/components/MarketContext'
 
 const WL_KEY = 'stock-watchlist'
 const SIG_KEY = 'stock-signals'
@@ -51,6 +52,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      <MarketContext />
       <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Watchlist</h1>

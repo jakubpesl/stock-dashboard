@@ -57,6 +57,19 @@ export function priceVsMA(price: number, ma: number | null): string {
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`
 }
 
+export function detectCrossover(closes: number[], daysBack = 10): 'golden_cross' | 'death_cross' | null {
+  if (closes.length < 202) return null
+  const ma50now  = closes.slice(-50).reduce((a, b) => a + b, 0) / 50
+  const ma200now = closes.slice(-200).reduce((a, b) => a + b, 0) / 200
+  const past = closes.slice(0, -daysBack)
+  if (past.length < 200) return null
+  const ma50past  = past.slice(-50).reduce((a, b) => a + b, 0) / 50
+  const ma200past = past.slice(-200).reduce((a, b) => a + b, 0) / 200
+  if (ma50past <= ma200past && ma50now > ma200now) return 'golden_cross'
+  if (ma50past >= ma200past && ma50now < ma200now) return 'death_cross'
+  return null
+}
+
 export function calcVolumeChange(history: { close: number; volume?: number }[], daysBack = 20): string {
   const withVol = history.filter((h) => (h as { volume?: number }).volume)
   if (withVol.length < daysBack + 5) return 'N/A'

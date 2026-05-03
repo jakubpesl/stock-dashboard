@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import StockChart from '@/components/StockChart'
 import AISignalBadge from '@/components/AISignalBadge'
 import NewsFeed from '@/components/NewsFeed'
+import { detectCrossover, calcMA } from '@/lib/indicators'
 
 const SIG_KEY = 'stock-signals'
 
@@ -94,6 +95,10 @@ export default function StockDetail() {
 
   const chartData = data ? data[tabMap[tab]] : []
   const isUp = (data?.changePercent ?? 0) >= 0
+  const closes1y = data?.history1y.map((h) => h.close) ?? []
+  const crossover = closes1y.length >= 202 ? detectCrossover(closes1y) : null
+  const ma50  = calcMA(closes1y, 50)
+  const ma200 = calcMA(closes1y, 200)
 
   const daysToEarnings = earningsDate
     ? Math.ceil((new Date(earningsDate).getTime() - Date.now()) / 86400000)
@@ -107,6 +112,8 @@ export default function StockDetail() {
     ['52t max', `$${data.high52w.toFixed(2)}`],
     ['52t min', `$${data.low52w.toFixed(2)}`],
     ['Tržní kap.', fmtCap(data.marketCap)],
+    ...(ma50  ? [['vs MA50',  `${data.price > ma50  ? '▲' : '▼'} $${ma50}`]]  : []),
+    ...(ma200 ? [['vs MA200', `${data.price > ma200 ? '▲' : '▼'} $${ma200}`]] : []),
     ...(earningsDate ? [['Výsledky', `${earningsDate} (za ${daysToEarnings}d)`]] : []),
   ] : []
 
@@ -130,6 +137,16 @@ export default function StockDetail() {
               {earningsDate && daysToEarnings !== null && daysToEarnings >= 0 && daysToEarnings <= 30 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold rounded-full">
                   📅 Výsledky za {daysToEarnings}d
+                </span>
+              )}
+              {crossover === 'golden_cross' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-300 text-amber-700 text-xs font-semibold rounded-full">
+                  ⭐ Golden Cross
+                </span>
+              )}
+              {crossover === 'death_cross' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 border border-slate-300 text-slate-600 text-xs font-semibold rounded-full">
+                  ☠️ Death Cross
                 </span>
               )}
             </div>
