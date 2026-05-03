@@ -50,7 +50,7 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
       newsSentiment?: { headline: string; sentiment: string }[]
     }
 
-    function toTermSignal(t: { signal: string; confidence: number; reasoning: string; priceTarget?: number | null } | undefined): TermSignal | undefined {
+    const toTermSignal = (t: { signal: string; confidence: number; reasoning: string; priceTarget?: number | null } | undefined): TermSignal | undefined => {
       if (!t) return undefined
       return {
         signal: t.signal as TermSignal['signal'],
