@@ -41,11 +41,18 @@ export default function Dashboard() {
     loadStocks(list)
   }, [loadStocks])
 
+  const [analyzing, setAnalyzing] = useState(false)
+
   async function handleRefresh() {
-    if (tickers.length === 0) return
     setRefreshing(true)
     await fetch('/api/refresh', { method: 'POST' })
-    // Re-run AI analysis for all watchlist tickers
+    await loadStocks(tickers)
+    setRefreshing(false)
+  }
+
+  async function handleAnalyzeAll() {
+    if (tickers.length === 0) return
+    setAnalyzing(true)
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -61,10 +68,10 @@ export default function Dashboard() {
           if (sym) saved[sym] = sig
         })
         localStorage.setItem(SIG_KEY, JSON.stringify(saved))
+        await loadStocks(tickers)
       }
     } catch { /* non-critical */ }
-    await loadStocks(tickers)
-    setRefreshing(false)
+    setAnalyzing(false)
   }
 
   const buyCount = Object.values(stocks).filter((s) => s.signal?.signal === 'BUY').length
@@ -83,9 +90,13 @@ export default function Dashboard() {
               {buyCount}× KUP signál
             </span>
           )}
-          <button onClick={handleRefresh} disabled={refreshing}
+          <button onClick={handleRefresh} disabled={refreshing || analyzing}
+            className="px-4 py-2 bg-white border border-slate-200 hover:border-[#6c63ff]/40 hover:text-[#6c63ff] disabled:opacity-50 text-slate-700 rounded-lg text-sm font-medium transition-colors shadow-sm">
+            {refreshing ? 'Obnovuji…' : '↻ Obnovit data'}
+          </button>
+          <button onClick={handleAnalyzeAll} disabled={analyzing || refreshing || tickers.length === 0}
             className="px-4 py-2 bg-[#6c63ff] hover:bg-[#6c63ff]/90 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
-            {refreshing ? '🤖 Analyzuji…' : '↻ Obnovit + analyzovat'}
+            {analyzing ? '🤖 Analyzuji…' : '🤖 Analyzovat vše'}
           </button>
         </div>
       </div>
