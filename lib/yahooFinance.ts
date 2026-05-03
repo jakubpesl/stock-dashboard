@@ -115,3 +115,30 @@ export async function fetchStockData(ticker: string): Promise<CacheEntry | null>
     return cached ?? null
   }
 }
+
+export async function fetchEarningsDate(ticker: string): Promise<string | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=calendarEvents`
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) return null
+    const json = await res.json() as {
+      quoteSummary?: {
+        result?: Array<{
+          calendarEvents?: {
+            earnings?: { earningsDate?: Array<{ raw: number }> }
+          }
+        }>
+      }
+    }
+    const dates = json.quoteSummary?.result?.[0]?.calendarEvents?.earnings?.earningsDate
+    if (!dates?.length) return null
+    const ts = dates[0].raw * 1000
+    if (ts < Date.now() - 86400000 * 7) return null
+    return new Date(ts).toISOString().slice(0, 10)
+  } catch {
+    return null
+  }
+}

@@ -43,6 +43,7 @@ export default function StockDetail() {
   const [tab, setTab] = useState<Tab>('1M')
   const [data, setData] = useState<MarketData | null>(null)
   const [signal, setSignal] = useState<Signal | null>(null)
+  const [earningsDate, setEarningsDate] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeMsg, setAnalyzeMsg] = useState('')
 
@@ -51,6 +52,7 @@ export default function StockDetail() {
       .then((r) => r.json())
       .then((json) => {
         setData(json.data)
+        setEarningsDate(json.earningsDate ?? null)
         if (json.signal) {
           setSignal(json.signal)
         } else {
@@ -92,6 +94,10 @@ export default function StockDetail() {
   const chartData = data ? data[tabMap[tab]] : []
   const isUp = (data?.changePercent ?? 0) >= 0
 
+  const daysToEarnings = earningsDate
+    ? Math.ceil((new Date(earningsDate).getTime() - Date.now()) / 86400000)
+    : null
+
   const metrics = data ? [
     ['Otevření', `$${data.open.toFixed(2)}`],
     ['Max dne', `$${data.high.toFixed(2)}`],
@@ -100,6 +106,7 @@ export default function StockDetail() {
     ['52t max', `$${data.high52w.toFixed(2)}`],
     ['52t min', `$${data.low52w.toFixed(2)}`],
     ['Tržní kap.', fmtCap(data.marketCap)],
+    ...(earningsDate ? [['Výsledky', `${earningsDate} (za ${daysToEarnings}d)`]] : []),
   ] : []
 
   return (
@@ -114,11 +121,16 @@ export default function StockDetail() {
         <div>
           <h1 className="text-3xl font-bold text-slate-900">{ticker}</h1>
           {data && (
-            <div className="flex items-baseline gap-3 mt-1">
+            <div className="flex items-baseline gap-3 mt-1 flex-wrap">
               <span className="text-2xl font-semibold text-slate-900">${data.price.toFixed(2)}</span>
               <span className={`text-lg font-semibold ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
                 {isUp ? '+' : ''}{data.changePercent.toFixed(2)}%
               </span>
+              {earningsDate && daysToEarnings !== null && daysToEarnings >= 0 && daysToEarnings <= 30 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold rounded-full">
+                  📅 Výsledky za {daysToEarnings}d
+                </span>
+              )}
             </div>
           )}
         </div>
