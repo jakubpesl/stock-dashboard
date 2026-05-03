@@ -50,7 +50,7 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     if (positions.length === 0) return
-    const symbols = [...new Set(positions.map((p) => p.symbol))]
+    const symbols = Array.from(new Set(positions.map((p) => p.symbol)))
     setLoading(true)
     Promise.allSettled(
       symbols.map((s) => fetch(`/api/stock/${s}`).then((r) => r.json()).then((j) => ({ s, j })))
@@ -146,7 +146,7 @@ export default function PortfolioPage() {
             { label: 'Investováno', value: `$${fmtCZK(totalInvested)}`, sub: '' },
             { label: 'Aktuální hodnota', value: `$${fmtCZK(totalCurrent)}`, sub: loading ? '…' : '' },
             { label: 'Zisk / Ztráta', value: `$${fmtCZK(Math.abs(totalPnL))}`, pnl: totalPnL, sub: `${totalPnL >= 0 ? '+' : ''}${totalPnLPct.toFixed(2)}%` },
-            { label: 'Pozice', value: String(positions.length), sub: `${[...new Set(positions.map(p => p.symbol))].length} titulů` },
+            { label: 'Pozice', value: String(positions.length), sub: `${Array.from(new Set(positions.map(p => p.symbol))).length} titulů` },
           ].map(({ label, value, sub, pnl }) => (
             <div key={label} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
               <p className="text-xs text-slate-400 mb-1">{label}</p>
