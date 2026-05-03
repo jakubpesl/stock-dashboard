@@ -42,8 +42,27 @@ export default function Dashboard() {
   }, [loadStocks])
 
   async function handleRefresh() {
+    if (tickers.length === 0) return
     setRefreshing(true)
     await fetch('/api/refresh', { method: 'POST' })
+    // Re-run AI analysis for all watchlist tickers
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickers: tickers.map((t) => t.symbol) }),
+      })
+      const json = await res.json() as { results?: { signal: string; confidence: number; risk: string; analyzedAt: string; priceTarget?: number; horizon?: string; reasoning: string; newsSentiment: unknown[]; headlines: unknown[] }[] }
+      if (json.results?.length) {
+        const stored = localStorage.getItem(SIG_KEY)
+        const saved: Record<string, unknown> = stored ? JSON.parse(stored) : {}
+        json.results.forEach((sig, i) => {
+          const sym = tickers[i]?.symbol
+          if (sym) saved[sym] = sig
+        })
+        localStorage.setItem(SIG_KEY, JSON.stringify(saved))
+      }
+    } catch { /* non-critical */ }
     await loadStocks(tickers)
     setRefreshing(false)
   }
@@ -66,7 +85,7 @@ export default function Dashboard() {
           )}
           <button onClick={handleRefresh} disabled={refreshing}
             className="px-4 py-2 bg-[#6c63ff] hover:bg-[#6c63ff]/90 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
-            {refreshing ? 'Obnovuji…' : '↻ Obnovit vše'}
+            {refreshing ? '🤖 Analyzuji…' : '↻ Obnovit + analyzovat'}
           </button>
         </div>
       </div>
