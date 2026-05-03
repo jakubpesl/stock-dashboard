@@ -10,7 +10,7 @@ const SIG_KEY = 'stock-signals'
 
 interface Ticker { symbol: string; alias: string }
 interface StockEntry {
-  data: { price: number; changePercent: number; high52w: number; low52w: number; history7d: { date: string; close: number }[] } | null
+  data: { price: number; change: number; changePercent: number; high52w: number; low52w: number; history7d: { date: string; close: number }[] } | null
   signal: { signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; risk: string; analyzedAt: string } | null
 }
 
@@ -59,13 +59,12 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tickers: tickers.map((t) => t.symbol) }),
       })
-      const json = await res.json() as { results?: { signal: string; confidence: number; risk: string; analyzedAt: string; priceTarget?: number; horizon?: string; reasoning: string; newsSentiment: unknown[]; headlines: unknown[] }[] }
+      const json = await res.json() as { results?: { ticker: string; signal: string; confidence: number; risk: string; analyzedAt: string; priceTarget?: number; horizon?: string; reasoning: string; newsSentiment: unknown[]; headlines: unknown[] }[] }
       if (json.results?.length) {
         const stored = localStorage.getItem(SIG_KEY)
         const saved: Record<string, unknown> = stored ? JSON.parse(stored) : {}
-        json.results.forEach((sig, i) => {
-          const sym = tickers[i]?.symbol
-          if (sym) saved[sym] = sig
+        json.results.forEach((sig) => {
+          if (sig.ticker) saved[sig.ticker] = sig
         })
         localStorage.setItem(SIG_KEY, JSON.stringify(saved))
         await loadStocks(tickers)

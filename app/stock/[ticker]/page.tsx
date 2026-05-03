@@ -104,18 +104,24 @@ export default function StockDetail() {
     ? Math.ceil((new Date(earningsDate).getTime() - Date.now()) / 86400000)
     : null
 
-  const metrics = data ? [
-    ['Otevření', `$${data.open.toFixed(2)}`],
-    ['Max dne', `$${data.high.toFixed(2)}`],
-    ['Min dne', `$${data.low.toFixed(2)}`],
-    ['Objem', data.volume.toLocaleString('cs-CZ')],
-    ['52t max', `$${data.high52w.toFixed(2)}`],
-    ['52t min', `$${data.low52w.toFixed(2)}`],
-    ['Tržní kap.', fmtCap(data.marketCap)],
-    ...(ma50  ? [['vs MA50',  `${data.price > ma50  ? '▲' : '▼'} $${ma50}`]]  : []),
-    ...(ma200 ? [['vs MA200', `${data.price > ma200 ? '▲' : '▼'} $${ma200}`]] : []),
-    ...(earningsDate ? [['Výsledky', `${earningsDate} (za ${daysToEarnings}d)`]] : []),
-  ] : []
+  const metricGroups = data ? [
+    [
+      ['Otevření', `$${data.open.toFixed(2)}`],
+      ['Max dne',  `$${data.high.toFixed(2)}`],
+      ['Min dne',  `$${data.low.toFixed(2)}`],
+      ['Objem',    data.volume.toLocaleString('cs-CZ')],
+    ],
+    [
+      ['52t max',    `$${data.high52w.toFixed(2)}`],
+      ['52t min',    `$${data.low52w.toFixed(2)}`],
+      ['Tržní kap.', fmtCap(data.marketCap)],
+    ],
+    [
+      ...(ma50  ? [['vs MA50',  `${data.price > ma50  ? '▲' : '▼'} $${ma50}`]]  : []),
+      ...(ma200 ? [['vs MA200', `${data.price > ma200 ? '▲' : '▼'} $${ma200}`]] : []),
+      ...(earningsDate ? [['Výsledky', `za ${daysToEarnings}d`]] : []),
+    ].filter(Boolean),
+  ].filter((g) => g.length > 0) : []
 
   return (
     <div>
@@ -131,8 +137,8 @@ export default function StockDetail() {
           {data && (
             <div className="flex items-baseline gap-3 mt-1 flex-wrap">
               <span className="text-2xl font-semibold text-slate-900">${data.price.toFixed(2)}</span>
-              <span className={`text-lg font-semibold ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
-                {isUp ? '+' : ''}{data.changePercent.toFixed(2)}%
+              <span className={`text-base font-semibold tabular-nums ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
+                {isUp ? '+' : ''}{data.change.toFixed(2)} ({isUp ? '+' : ''}{data.changePercent.toFixed(2)}%)
               </span>
               {earningsDate && daysToEarnings !== null && daysToEarnings >= 0 && daysToEarnings <= 30 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold rounded-full">
@@ -184,12 +190,19 @@ export default function StockDetail() {
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
           <h3 className="font-semibold text-slate-900 mb-4">Klíčové údaje</h3>
-          {metrics.length > 0 ? (
-            <dl className="space-y-3 text-sm">
-              {metrics.map(([label, value]) => (
-                <div key={label} className="flex justify-between items-center">
-                  <dt className="text-slate-400">{label}</dt>
-                  <dd className="font-semibold text-slate-900">{value}</dd>
+          {metricGroups.length > 0 ? (
+            <dl className="text-sm space-y-0">
+              {metricGroups.map((group, gi) => (
+                <div key={gi}>
+                  {gi > 0 && <div className="border-t border-slate-100 my-3" />}
+                  <div className="space-y-2.5">
+                    {group.map(([label, value]) => (
+                      <div key={label} className="flex justify-between items-center">
+                        <dt className="text-slate-400">{label}</dt>
+                        <dd className="font-semibold text-slate-900 tabular-nums">{value}</dd>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </dl>
@@ -212,39 +225,45 @@ export default function StockDetail() {
           {/* Short + Long term side by side */}
           {(signal.shortTerm || signal.longTerm) ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              {signal.shortTerm && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Krátkodobý · 1–4 týdny</p>
-                  <AISignalBadge signal={signal.shortTerm.signal} confidence={signal.shortTerm.confidence} />
-                  <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.shortTerm.reasoning}</p>
-                  <div className="flex flex-wrap gap-3 mt-3 text-xs">
-                    {signal.shortTerm.stopLoss && (
-                      <span className="text-slate-400">Stop-loss: <span className="text-red-500 font-semibold">${signal.shortTerm.stopLoss}</span></span>
-                    )}
-                    {signal.shortTerm.riskReward && (
-                      <span className="text-slate-400">R:R: <span className="text-emerald-600 font-semibold">1:{signal.shortTerm.riskReward.toFixed(1)}</span></span>
-                    )}
+              {signal.shortTerm && (() => {
+                const borderCol = signal.shortTerm.signal === 'BUY' ? 'border-l-emerald-400' : signal.shortTerm.signal === 'SELL' ? 'border-l-red-400' : 'border-l-amber-400'
+                return (
+                  <div className={`bg-slate-50 border border-slate-200 border-l-4 ${borderCol} rounded-xl p-4`}>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Krátkodobý · 1–4 týdny</p>
+                    <AISignalBadge signal={signal.shortTerm.signal} confidence={signal.shortTerm.confidence} />
+                    <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.shortTerm.reasoning}</p>
+                    <div className="flex flex-wrap gap-3 mt-3 text-xs">
+                      {signal.shortTerm.stopLoss && (
+                        <span className="text-slate-400">Stop-loss: <span className="text-red-500 font-semibold">${signal.shortTerm.stopLoss}</span></span>
+                      )}
+                      {signal.shortTerm.riskReward && (
+                        <span className="text-slate-400">R:R: <span className="text-emerald-600 font-semibold">1:{signal.shortTerm.riskReward.toFixed(1)}</span></span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-              {signal.longTerm && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Dlouhodobý · 3–12 měsíců</p>
-                  <AISignalBadge signal={signal.longTerm.signal} confidence={signal.longTerm.confidence} />
-                  <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.longTerm.reasoning}</p>
-                  <div className="flex flex-wrap gap-3 mt-3 text-xs">
-                    {signal.longTerm.priceTarget && (
-                      <span className="text-slate-400">Cíl: <span className="text-[#6c63ff] font-semibold">${signal.longTerm.priceTarget}</span></span>
-                    )}
-                    {signal.longTerm.stopLoss && (
-                      <span className="text-slate-400">Stop-loss: <span className="text-red-500 font-semibold">${signal.longTerm.stopLoss}</span></span>
-                    )}
-                    {signal.longTerm.riskReward && (
-                      <span className="text-slate-400">R:R: <span className="text-emerald-600 font-semibold">1:{signal.longTerm.riskReward.toFixed(1)}</span></span>
-                    )}
+                )
+              })()}
+              {signal.longTerm && (() => {
+                const borderCol = signal.longTerm.signal === 'BUY' ? 'border-l-emerald-400' : signal.longTerm.signal === 'SELL' ? 'border-l-red-400' : 'border-l-amber-400'
+                return (
+                  <div className={`bg-slate-50 border border-slate-200 border-l-4 ${borderCol} rounded-xl p-4`}>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Dlouhodobý · 3–12 měsíců</p>
+                    <AISignalBadge signal={signal.longTerm.signal} confidence={signal.longTerm.confidence} />
+                    <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.longTerm.reasoning}</p>
+                    <div className="flex flex-wrap gap-3 mt-3 text-xs">
+                      {signal.longTerm.priceTarget && (
+                        <span className="text-slate-400">Cíl: <span className="text-[#6c63ff] font-semibold">${signal.longTerm.priceTarget}</span></span>
+                      )}
+                      {signal.longTerm.stopLoss && (
+                        <span className="text-slate-400">Stop-loss: <span className="text-red-500 font-semibold">${signal.longTerm.stopLoss}</span></span>
+                      )}
+                      {signal.longTerm.riskReward && (
+                        <span className="text-slate-400">R:R: <span className="text-emerald-600 font-semibold">1:{signal.longTerm.riskReward.toFixed(1)}</span></span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
             </div>
           ) : (
             <div className="mb-4">

@@ -259,9 +259,11 @@ export default function ScannerPage() {
                 </span>
 
                 {/* Confidence */}
-                <div className="text-center min-w-12">
-                  <div className="text-lg font-bold text-slate-900">{r.confidence}%</div>
-                  <div className="text-xs text-slate-400">confidence</div>
+                <div className="text-center min-w-14">
+                  <div className="text-lg font-bold text-slate-900 tabular-nums">{r.confidence}%</div>
+                  <div className="h-1 bg-slate-100 rounded-full overflow-hidden mt-1 w-14">
+                    <div className={`h-full rounded-full ${st.dot}`} style={{ width: `${r.confidence}%` }} />
+                  </div>
                 </div>
 
                 {/* Price + change */}

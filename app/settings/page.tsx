@@ -79,9 +79,8 @@ export default function SettingsPage() {
       if (json.results?.length) {
         const stored = localStorage.getItem(SIG_KEY)
         const saved: Record<string, unknown> = stored ? JSON.parse(stored) : {}
-        json.results.forEach((sig, i) => {
-          const sym = tickers[i]?.symbol
-          if (sym) saved[sym] = sig
+        json.results.forEach((sig) => {
+          if (sig.ticker) saved[sig.ticker] = sig
         })
         localStorage.setItem(SIG_KEY, JSON.stringify(saved))
       }

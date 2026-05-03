@@ -3,7 +3,7 @@ import Link from 'next/link'
 import StockChart from './StockChart'
 
 interface Signal { signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; risk: string; analyzedAt: string }
-interface CacheEntry { price: number; changePercent: number; high52w: number; low52w: number; history7d: { date: string; close: number }[] }
+interface CacheEntry { price: number; change: number; changePercent: number; high52w: number; low52w: number; history7d: { date: string; close: number }[] }
 
 const signalCfg = {
   BUY:  { label: 'KUP',    bar: 'bg-emerald-500', pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', glow: 'signal-buy' },
@@ -37,6 +37,9 @@ export default function StockCard({ symbol, alias, data, signal }: {
             <p className="text-lg font-bold text-slate-900 tabular-nums">${data.price.toFixed(2)}</p>
             <p className={`text-xs font-semibold tabular-nums ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
               {isUp ? '▲' : '▼'} {Math.abs(data.changePercent).toFixed(2)}%
+            </p>
+            <p className={`text-[10px] tabular-nums ${isUp ? 'text-emerald-500' : 'text-red-400'}`}>
+              {isUp ? '+' : ''}{data.change.toFixed(2)}
             </p>
           </div>
         ) : (
