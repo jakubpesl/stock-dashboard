@@ -100,9 +100,25 @@ export default function StockChart({ data, mini = false }: { data: Point[]; mini
   return (
     <div>
       {(hasMA50 || hasMA200) && (
-        <div className="flex gap-1.5 mb-3 justify-end">
-          {hasMA50  && <MABtn label="MA50"  active={showMA50}  color="#f59e0b" onClick={() => setShowMA50(v => !v)} />}
-          {hasMA200 && <MABtn label="MA200" active={showMA200} color="#3b82f6" onClick={() => setShowMA200(v => !v)} />}
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="flex gap-3 text-xs text-slate-400">
+            {hasMA50 && showMA50 && (
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-4 h-0.5 bg-amber-400 rounded" />
+                <span><span className="font-semibold text-slate-600">MA50</span> — 50denní průměr, krátkodobý trend</span>
+              </span>
+            )}
+            {hasMA200 && showMA200 && (
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-4 h-0.5 bg-blue-400 rounded" />
+                <span><span className="font-semibold text-slate-600">MA200</span> — 200denní průměr, dlouhodobý trend</span>
+              </span>
+            )}
+          </div>
+          <div className="flex gap-1.5">
+            {hasMA50  && <MABtn label="MA50"  active={showMA50}  color="#f59e0b" onClick={() => setShowMA50(v => !v)} />}
+            {hasMA200 && <MABtn label="MA200" active={showMA200} color="#3b82f6" onClick={() => setShowMA200(v => !v)} />}
+          </div>
         </div>
       )}
       <ResponsiveContainer width="100%" height={300}>
