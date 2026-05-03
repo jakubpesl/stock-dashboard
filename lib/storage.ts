@@ -36,6 +36,13 @@ export interface Settings {
   lastAnalysisRun: string | null
 }
 
+export interface TermSignal {
+  signal: 'BUY' | 'HOLD' | 'SELL'
+  confidence: number
+  reasoning: string
+  priceTarget?: number
+}
+
 export interface Signal {
   ticker: string
   signal: 'BUY' | 'HOLD' | 'SELL'
@@ -46,6 +53,8 @@ export interface Signal {
   analyzedAt: string
   priceTarget?: number
   horizon?: string
+  shortTerm?: TermSignal
+  longTerm?: TermSignal
   newsSentiment: { headline: string; sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' }[]
   headlines: { title: string; url: string; source: string; publishedAt: string }[]
 }

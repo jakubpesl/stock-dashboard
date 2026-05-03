@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { fetchStockData } from './yahooFinance'
 import { fetchNewsHeadlines, NewsHeadline } from './newsRss'
 import { calculateRSI, calcChange } from './indicators'
-import { getSignal, saveSignal, Signal } from './storage'
+import { getSignal, saveSignal, Signal, TermSignal } from './storage'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -24,7 +24,7 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
     const model = lite ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6'
     const system = lite
       ? 'You are a stock screener. Respond ONLY with valid JSON, no markdown. Return: {"signal": "BUY" or "HOLD" or "SELL", "confidence": number 0-100, "reasoning": "1 sentence in Czech", "risk": "LOW" or "MEDIUM" or "HIGH", "priceTarget": number or null, "horizon": "3 months" or "6 months" or null, "newsSentiment": []}. Be conservative.'
-      : 'You are a conservative personal finance assistant. Analyze stock data and news headlines. Respond ONLY with valid JSON, no markdown, no text outside JSON. Return exactly: {"signal": "BUY" or "HOLD" or "SELL", "confidence": number 0-100, "reasoning": "max 2 sentences in Czech", "risk": "LOW" or "MEDIUM" or "HIGH", "priceTarget": number or null, "horizon": "1 month" or "3 months" or "6 months" or null, "newsSentiment": [{"headline": "...", "sentiment": "POSITIVE" or "NEUTRAL" or "NEGATIVE"}]}. priceTarget is your 12-month price target in USD. Be conservative — default to HOLD unless evidence is clear.'
+      : 'You are a conservative personal finance assistant. Analyze stock data and news. Respond ONLY with valid JSON, no markdown. Return exactly this structure:\n{"signal":"BUY"|"HOLD"|"SELL","confidence":0-100,"reasoning":"1-2 sentences in Czech summarizing both horizons","risk":"LOW"|"MEDIUM"|"HIGH","shortTerm":{"signal":"BUY"|"HOLD"|"SELL","confidence":0-100,"reasoning":"1 sentence in Czech about next 1-4 weeks: momentum, RSI, news"},"longTerm":{"signal":"BUY"|"HOLD"|"SELL","confidence":0-100,"reasoning":"1 sentence in Czech about next 3-12 months: fundamentals, trend, valuation","priceTarget":number or null},"newsSentiment":[{"headline":"...","sentiment":"POSITIVE"|"NEUTRAL"|"NEGATIVE"}]}\nTop-level signal = overall verdict. Be conservative — default HOLD unless evidence is clear.'
     const userContent = lite
       ? `Ticker: ${ticker}\nPrice: ${data.price} USD\n1d: ${data.changePercent}%\n7d: ${pct7d}%\n30d: ${pct30d}%\nRSI: ${rsi}\n52w high: ${data.high52w}\nReturn JSON.`
       : `Ticker: ${ticker}\nCurrent price: ${data.price} USD\nChange 1d: ${data.changePercent}%\nChange 7d: ${pct7d}%\nChange 30d: ${pct30d}%\nRSI(14): ${rsi}\nRecent news headlines:\n${headlineLines}\nAnalyze and return JSON.`
@@ -45,7 +45,19 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
       risk: string
       priceTarget?: number | null
       horizon?: string | null
+      shortTerm?: { signal: string; confidence: number; reasoning: string }
+      longTerm?: { signal: string; confidence: number; reasoning: string; priceTarget?: number | null }
       newsSentiment?: { headline: string; sentiment: string }[]
+    }
+
+    function toTermSignal(t: { signal: string; confidence: number; reasoning: string; priceTarget?: number | null } | undefined): TermSignal | undefined {
+      if (!t) return undefined
+      return {
+        signal: t.signal as TermSignal['signal'],
+        confidence: Math.min(100, Math.max(0, t.confidence)),
+        reasoning: t.reasoning,
+        priceTarget: t.priceTarget ?? undefined,
+      }
     }
 
     const signal: Signal = {
@@ -56,8 +68,10 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
       risk: parsed.risk as Signal['risk'],
       price: data.price,
       analyzedAt: new Date().toISOString(),
-      priceTarget: parsed.priceTarget ?? undefined,
+      priceTarget: parsed.longTerm?.priceTarget ?? parsed.priceTarget ?? undefined,
       horizon: parsed.horizon ?? undefined,
+      shortTerm: toTermSignal(parsed.shortTerm),
+      longTerm: toTermSignal(parsed.longTerm),
       newsSentiment: (parsed.newsSentiment ?? []).map((s) => ({
         headline: s.headline,
         sentiment: s.sentiment as 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE',

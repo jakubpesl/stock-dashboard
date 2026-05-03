@@ -18,10 +18,14 @@ interface MarketData {
   high52w: number; low52w: number; marketCap: number
   history7d: Point[]; history1m: Point[]; history3m: Point[]; history1y: Point[]
 }
+interface TermSignal {
+  signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; reasoning: string; priceTarget?: number
+}
 interface Signal {
   signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; risk: string
   reasoning: string; analyzedAt: string; price: number
   priceTarget?: number; horizon?: string
+  shortTerm?: TermSignal; longTerm?: TermSignal
   newsSentiment: { headline: string; sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' }[]
   headlines: { title: string; url: string; source: string; publishedAt: string }[]
 }
@@ -168,17 +172,57 @@ export default function StockDetail() {
       {/* AI Signal */}
       {signal && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
-          <h3 className="font-semibold text-slate-900 mb-4">AI Analýza</h3>
-          <AISignalBadge signal={signal.signal} confidence={signal.confidence} />
-          <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.reasoning}</p>
-          <div className="flex flex-wrap gap-4 mt-3 text-xs text-slate-400">
-            <span>Riziko: <span className="text-slate-700 font-medium">{signal.risk}</span></span>
-            {signal.priceTarget && (
-              <span>Cílová cena: <span className="text-[#6c63ff] font-semibold">${signal.priceTarget}</span>
-                {signal.horizon && <span> ({signal.horizon})</span>}
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-semibold text-slate-900">AI Analýza</h3>
+            <span className="text-xs text-slate-400">
+              {new Date(signal.analyzedAt).toLocaleString('cs-CZ')}
+            </span>
+          </div>
+
+          {/* Short + Long term side by side */}
+          {(signal.shortTerm || signal.longTerm) ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {signal.shortTerm && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Krátkodobý · 1–4 týdny</p>
+                  <AISignalBadge signal={signal.shortTerm.signal} confidence={signal.shortTerm.confidence} />
+                  <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.shortTerm.reasoning}</p>
+                </div>
+              )}
+              {signal.longTerm && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Dlouhodobý · 3–12 měsíců</p>
+                  <AISignalBadge signal={signal.longTerm.signal} confidence={signal.longTerm.confidence} />
+                  <p className="text-slate-600 text-sm mt-3 leading-relaxed">{signal.longTerm.reasoning}</p>
+                  {signal.longTerm.priceTarget && (
+                    <p className="text-xs mt-2 text-slate-400">
+                      Cílová cena: <span className="text-[#6c63ff] font-bold">${signal.longTerm.priceTarget}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mb-4">
+              <AISignalBadge signal={signal.signal} confidence={signal.confidence} />
+              {signal.priceTarget && (
+                <p className="text-xs mt-2 text-slate-400">
+                  Cílová cena: <span className="text-[#6c63ff] font-bold">${signal.priceTarget}</span>
+                  {signal.horizon && <span> ({signal.horizon})</span>}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Summary + risk */}
+          <div className="pt-3 border-t border-slate-100">
+            <p className="text-slate-600 text-sm leading-relaxed mb-2">{signal.reasoning}</p>
+            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+              Riziko:
+              <span className={`font-semibold ${signal.risk === 'LOW' ? 'text-emerald-600' : signal.risk === 'HIGH' ? 'text-red-500' : 'text-amber-600'}`}>
+                {signal.risk === 'LOW' ? 'Nízké' : signal.risk === 'HIGH' ? 'Vysoké' : 'Střední'}
               </span>
-            )}
-            <span>Analyzováno: <span className="text-slate-700">{new Date(signal.analyzedAt).toLocaleString('cs-CZ')}</span></span>
+            </span>
           </div>
         </div>
       )}
