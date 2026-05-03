@@ -5,6 +5,7 @@ import StockCard from '@/components/StockCard'
 import SkeletonCard from '@/components/SkeletonCard'
 
 const WL_KEY = 'stock-watchlist'
+const SIG_KEY = 'stock-signals'
 
 interface Ticker { symbol: string; alias: string }
 interface StockEntry {
@@ -19,11 +20,13 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false)
 
   const loadStocks = useCallback(async (list: Ticker[]) => {
+    const stored = localStorage.getItem(SIG_KEY)
+    const savedSignals: Record<string, StockEntry['signal']> = stored ? JSON.parse(stored) : {}
     const results: Record<string, StockEntry> = {}
     await Promise.allSettled(
       list.map(async (t) => {
         const json = await fetch(`/api/stock/${t.symbol}`).then((r) => r.json())
-        results[t.symbol] = { data: json.data, signal: json.signal }
+        results[t.symbol] = { data: json.data, signal: json.signal ?? savedSignals[t.symbol] ?? null }
       })
     )
     setStocks(results)

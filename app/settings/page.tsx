@@ -4,6 +4,7 @@ import NotificationToggle from '@/components/NotificationToggle'
 
 const WL_KEY = 'stock-watchlist'
 const SET_KEY = 'stock-settings'
+const SIG_KEY = 'stock-signals'
 
 interface Ticker { symbol: string; alias: string; notificationsEnabled: boolean }
 interface Settings { notificationEmail: string; analysisInterval: string; lastAnalysisRun: string | null }
@@ -69,11 +70,21 @@ export default function SettingsPage() {
     if (tickers.length === 0) { flash('Přidej nejprve ticker.'); return }
     setAnalyzing(true)
     try {
-      await fetch('/api/analyze', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tickers: tickers.map((t) => t.symbol) }),
       })
+      const json = await res.json() as { results?: { signal: string; confidence: number; risk: string; analyzedAt: string; ticker?: string; priceTarget?: number; horizon?: string; reasoning: string; newsSentiment: unknown[]; headlines: unknown[] }[] }
+      if (json.results?.length) {
+        const stored = localStorage.getItem(SIG_KEY)
+        const saved: Record<string, unknown> = stored ? JSON.parse(stored) : {}
+        json.results.forEach((sig, i) => {
+          const sym = tickers[i]?.symbol
+          if (sym) saved[sym] = sig
+        })
+        localStorage.setItem(SIG_KEY, JSON.stringify(saved))
+      }
       const updated = { ...settings, lastAnalysisRun: new Date().toISOString() }
       setSettings(updated)
       localStorage.setItem(SET_KEY, JSON.stringify(updated))

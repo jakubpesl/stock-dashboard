@@ -5,6 +5,8 @@ import StockChart from '@/components/StockChart'
 import AISignalBadge from '@/components/AISignalBadge'
 import NewsFeed from '@/components/NewsFeed'
 
+const SIG_KEY = 'stock-signals'
+
 type Tab = '1T' | '1M' | '3M' | '1R'
 type HistKey = 'history7d' | 'history1m' | 'history3m' | 'history1y'
 const tabMap: Record<Tab, HistKey> = { '1T': 'history7d', '1M': 'history1m', '3M': 'history3m', '1R': 'history1y' }
@@ -43,7 +45,16 @@ export default function StockDetail() {
   useEffect(() => {
     fetch(`/api/stock/${ticker}`)
       .then((r) => r.json())
-      .then((json) => { setData(json.data); setSignal(json.signal) })
+      .then((json) => {
+        setData(json.data)
+        if (json.signal) {
+          setSignal(json.signal)
+        } else {
+          const stored = localStorage.getItem(SIG_KEY)
+          const saved: Record<string, Signal> = stored ? JSON.parse(stored) : {}
+          setSignal(saved[ticker] ?? null)
+        }
+      })
   }, [ticker])
 
   async function analyze() {
@@ -57,7 +68,12 @@ export default function StockDetail() {
       })
       const json = await res.json() as { results?: Signal[]; error?: string; errors?: string[] }
       if (json.results?.[0]) {
-        setSignal(json.results[0])
+        const sig = json.results[0]
+        setSignal(sig)
+        const stored = localStorage.getItem(SIG_KEY)
+        const saved: Record<string, Signal> = stored ? JSON.parse(stored) : {}
+        saved[ticker] = sig
+        localStorage.setItem(SIG_KEY, JSON.stringify(saved))
         setAnalyzeMsg('✓ Analýza dokončena.')
       } else {
         setAnalyzeMsg(`Chyba: ${json.errors?.join('; ') ?? json.error ?? 'Neznámá chyba'}`)
