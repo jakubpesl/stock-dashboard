@@ -66,7 +66,7 @@ export default function ScannerPage() {
   const [done, setDone] = useState(false)
   const [scannedAt, setScannedAt] = useState<string | null>(null)
   const [toast, setToast] = useState('')
-  const [aiLimit, setAiLimit] = useState(15)
+  const [aiLimit, setAiLimit] = useState(10)
 
   // Filters
   const [filterSignals, setFilterSignals] = useState<Set<'BUY' | 'HOLD' | 'SELL'>>(new Set(SIGNALS))
