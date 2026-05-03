@@ -1,15 +1,32 @@
 'use client'
-import { useId } from 'react'
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts'
+import { useId, useState } from 'react'
+import {
+  ResponsiveContainer, ComposedChart, Area, Line,
+  XAxis, YAxis, Tooltip, ReferenceLine,
+} from 'recharts'
 
 interface Point { date: string; close: number }
+interface ChartPoint extends Point { ma50?: number | null; ma200?: number | null }
 
-function DarkTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+function calcMA(data: Point[], period: number): (number | null)[] {
+  return data.map((_, i) => {
+    if (i < period - 1) return null
+    const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b.close, 0)
+    return Math.round((sum / period) * 100) / 100
+  })
+}
+
+function DarkTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; dataKey: string; color: string }[]; label?: string }) {
   if (!active || !payload?.length) return null
+  const close = payload.find((p) => p.dataKey === 'close')
+  const ma50  = payload.find((p) => p.dataKey === 'ma50')
+  const ma200 = payload.find((p) => p.dataKey === 'ma200')
   return (
-    <div className="bg-slate-900 text-white px-3 py-2 rounded-xl shadow-2xl text-sm pointer-events-none">
-      <p className="text-slate-400 text-xs mb-0.5">{label}</p>
-      <p className="font-bold text-white">${payload[0].value.toFixed(2)}</p>
+    <div className="bg-slate-900 text-white px-3 py-2.5 rounded-xl shadow-2xl text-sm pointer-events-none space-y-1 min-w-[120px]">
+      <p className="text-slate-400 text-xs mb-1">{label}</p>
+      {close  && <p className="font-bold">${close.value.toFixed(2)}</p>}
+      {ma50   && <p className="text-amber-400 text-xs">MA50: ${ma50.value.toFixed(2)}</p>}
+      {ma200  && <p className="text-blue-400 text-xs">MA200: ${ma200.value.toFixed(2)}</p>}
     </div>
   )
 }
@@ -19,8 +36,22 @@ function fmtY(v: number) {
   return `$${v.toFixed(0)}`
 }
 
+function MABtn({ label, active, color, onClick }: { label: string; active: boolean; color: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick}
+      className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all ${
+        active ? `text-white border-transparent` : 'text-slate-400 border-slate-200 bg-white hover:border-slate-300'
+      }`}
+      style={active ? { background: color, borderColor: color } : {}}>
+      {label}
+    </button>
+  )
+}
+
 export default function StockChart({ data, mini = false }: { data: Point[]; mini?: boolean }) {
   const uid = useId().replace(/:/g, '')
+  const [showMA50, setShowMA50] = useState(true)
+  const [showMA200, setShowMA200] = useState(true)
 
   if (!data || data.length === 0) {
     return <div className="h-16 flex items-center justify-center text-slate-400 text-xs">Žádná data</div>
@@ -35,7 +66,7 @@ export default function StockChart({ data, mini = false }: { data: Point[]; mini
     const max = Math.max(...data.map((d) => d.close))
     return (
       <ResponsiveContainer width="100%" height={72}>
-        <AreaChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 4 }}>
+        <ComposedChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 4 }}>
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={lineColor} stopOpacity={0.22} />
@@ -45,41 +76,67 @@ export default function StockChart({ data, mini = false }: { data: Point[]; mini
           <YAxis domain={[min * 0.997, max * 1.003]} hide />
           <Area type="natural" dataKey="close" stroke={lineColor} strokeWidth={2}
             fill={`url(#${gradId})`} dot={false} />
-        </AreaChart>
+        </ComposedChart>
       </ResponsiveContainer>
     )
   }
+
+  const hasMA50  = data.length >= 50
+  const hasMA200 = data.length >= 200
+  const ma50arr  = hasMA50  ? calcMA(data, 50)  : []
+  const ma200arr = hasMA200 ? calcMA(data, 200) : []
+
+  const chartData: ChartPoint[] = data.map((p, i) => ({
+    ...p,
+    ma50:  hasMA50  ? ma50arr[i]  : undefined,
+    ma200: hasMA200 ? ma200arr[i] : undefined,
+  }))
 
   const values = data.map((d) => d.close)
   const min = Math.min(...values)
   const max = Math.max(...values)
   const pad = (max - min) * 0.1
-  const firstClose = data[0].close
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart data={data} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity={0.28} />
-            <stop offset="55%" stopColor={lineColor} stopOpacity={0.06} />
-            <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 11 }}
-          tickLine={false} axisLine={false}
-          tickFormatter={(v: string) => v.slice(5)} interval="preserveStartEnd" />
-        <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={false}
-          tickFormatter={fmtY} domain={[min - pad, max + pad]} width={55} />
-        <ReferenceLine y={firstClose} stroke="#cbd5e1" strokeDasharray="4 4" strokeWidth={1} />
-        <Tooltip
-          content={<DarkTooltip />}
-          cursor={{ stroke: lineColor, strokeWidth: 1, strokeDasharray: '4 4', strokeOpacity: 0.5 }}
-        />
-        <Area type="natural" dataKey="close" stroke={lineColor} strokeWidth={2.5}
-          fill={`url(#${gradId})`} dot={false}
-          activeDot={{ r: 5, fill: lineColor, stroke: '#fff', strokeWidth: 2 }} />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div>
+      {(hasMA50 || hasMA200) && (
+        <div className="flex gap-1.5 mb-3 justify-end">
+          {hasMA50  && <MABtn label="MA50"  active={showMA50}  color="#f59e0b" onClick={() => setShowMA50(v => !v)} />}
+          {hasMA200 && <MABtn label="MA200" active={showMA200} color="#3b82f6" onClick={() => setShowMA200(v => !v)} />}
+        </div>
+      )}
+      <ResponsiveContainer width="100%" height={300}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={lineColor} stopOpacity={0.28} />
+              <stop offset="55%" stopColor={lineColor} stopOpacity={0.06} />
+              <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 11 }}
+            tickLine={false} axisLine={false}
+            tickFormatter={(v: string) => v.slice(5)} interval="preserveStartEnd" />
+          <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={false}
+            tickFormatter={fmtY} domain={[min - pad, max + pad]} width={55} />
+          <ReferenceLine y={data[0].close} stroke="#cbd5e1" strokeDasharray="4 4" strokeWidth={1} />
+          <Tooltip
+            content={<DarkTooltip />}
+            cursor={{ stroke: lineColor, strokeWidth: 1, strokeDasharray: '4 4', strokeOpacity: 0.4 }}
+          />
+          <Area type="natural" dataKey="close" stroke={lineColor} strokeWidth={2.5}
+            fill={`url(#${gradId})`} dot={false}
+            activeDot={{ r: 5, fill: lineColor, stroke: '#fff', strokeWidth: 2 }} />
+          {hasMA50 && showMA50 && (
+            <Line type="natural" dataKey="ma50" stroke="#f59e0b" strokeWidth={1.5}
+              dot={false} activeDot={false} connectNulls />
+          )}
+          {hasMA200 && showMA200 && (
+            <Line type="natural" dataKey="ma200" stroke="#3b82f6" strokeWidth={1.5}
+              dot={false} activeDot={false} connectNulls />
+          )}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
   )
 }

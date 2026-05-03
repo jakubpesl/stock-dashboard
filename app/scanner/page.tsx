@@ -33,6 +33,10 @@ function sortResults(results: ScanResult[]) {
   )
 }
 
+const SECTORS = ['Vše', 'Technology', 'Consumer', 'Finance', 'Healthcare', 'Energy', 'Industrial', 'Defensive']
+const SIGNALS: ('BUY' | 'HOLD' | 'SELL')[] = ['BUY', 'HOLD', 'SELL']
+const SIG_LABELS = { BUY: 'KUP', HOLD: 'DRŽ', SELL: 'PRODEJ' }
+
 export default function ScannerPage() {
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -40,6 +44,12 @@ export default function ScannerPage() {
   const [done, setDone] = useState(false)
   const [scannedAt, setScannedAt] = useState<string | null>(null)
   const [toast, setToast] = useState('')
+
+  // Filters
+  const [filterSignals, setFilterSignals] = useState<Set<'BUY' | 'HOLD' | 'SELL'>>(new Set(SIGNALS))
+  const [filterSector, setFilterSector] = useState('Vše')
+  const [filterMinConf, setFilterMinConf] = useState(0)
+  const [filterMinDiscount, setFilterMinDiscount] = useState(0)
 
   useEffect(() => {
     const stored = localStorage.getItem(SCAN_KEY)
@@ -112,6 +122,21 @@ export default function ScannerPage() {
   const holdResults = results.filter((r) => r.signal === 'HOLD')
   const sellResults = results.filter((r) => r.signal === 'SELL')
 
+  function toggleSignal(s: 'BUY' | 'HOLD' | 'SELL') {
+    setFilterSignals((prev) => {
+      const next = new Set(prev)
+      next.has(s) ? next.delete(s) : next.add(s)
+      return next.size === 0 ? prev : next
+    })
+  }
+
+  const filtered = results.filter((r) =>
+    filterSignals.has(r.signal) &&
+    (filterSector === 'Vše' || r.stock.sector === filterSector) &&
+    r.confidence >= filterMinConf &&
+    r.discount >= filterMinDiscount
+  )
+
   return (
     <div>
       {/* Header */}
@@ -163,10 +188,58 @@ export default function ScannerPage() {
         </div>
       )}
 
-      {/* Results */}
+      {/* Filters */}
       {results.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-5 flex flex-wrap gap-4 items-end">
+          {/* Signal toggle */}
+          <div>
+            <p className="text-xs text-slate-400 font-medium mb-2">Signál</p>
+            <div className="flex gap-1.5">
+              {SIGNALS.map((s) => {
+                const st = signalStyle[s]
+                const active = filterSignals.has(s)
+                return (
+                  <button key={s} onClick={() => toggleSignal(s)}
+                    className={`px-3 py-1 rounded-full border text-xs font-bold transition-all ${active ? st.pill : 'bg-white text-slate-400 border-slate-200'}`}>
+                    {SIG_LABELS[s]}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          {/* Sector */}
+          <div>
+            <p className="text-xs text-slate-400 font-medium mb-2">Sektor</p>
+            <select value={filterSector} onChange={(e) => setFilterSector(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-[#6c63ff]">
+              {SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          {/* Min confidence */}
+          <div>
+            <p className="text-xs text-slate-400 font-medium mb-2">Min. shoda: <span className="text-slate-700 font-bold">{filterMinConf}%</span></p>
+            <input type="range" min={0} max={90} step={5} value={filterMinConf}
+              onChange={(e) => setFilterMinConf(Number(e.target.value))}
+              className="w-32 accent-[#6c63ff]" />
+          </div>
+          {/* Min discount */}
+          <div>
+            <p className="text-xs text-slate-400 font-medium mb-2">Min. sleva od max: <span className="text-slate-700 font-bold">{filterMinDiscount}%</span></p>
+            <input type="range" min={0} max={50} step={5} value={filterMinDiscount}
+              onChange={(e) => setFilterMinDiscount(Number(e.target.value))}
+              className="w-32 accent-[#6c63ff]" />
+          </div>
+          {/* Result count */}
+          <div className="ml-auto text-sm text-slate-400">
+            <span className="font-semibold text-slate-700">{filtered.length}</span> / {results.length} titulů
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
+      {filtered.length > 0 && (
         <div className="space-y-3">
-          {results.map((r) => {
+          {filtered.map((r) => {
             const st = signalStyle[r.signal]
             const upside = r.priceTarget ? ((r.priceTarget - r.price) / r.price * 100).toFixed(1) : null
             return (
@@ -230,6 +303,13 @@ export default function ScannerPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Empty filtered state */}
+      {!running && results.length > 0 && filtered.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-slate-400 text-sm">Žádné výsledky neodpovídají filtrům. Zkus uvolnit kritéria.</p>
         </div>
       )}
 
