@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
+import NavLinks from '@/components/NavLinks'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -14,23 +15,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="cs">
       <body className={`${inter.className} min-h-screen bg-slate-100 text-slate-900`}>
-        <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-            <Link href="/" className="font-bold text-lg text-[#6c63ff] flex items-center gap-2">
-              <span className="text-xl">📊</span>
-              <span>Stock Dashboard</span>
+        <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-15 flex items-center justify-between" style={{ height: '3.75rem' }}>
+            <Link href="/" className="font-bold text-[#6c63ff] flex items-center gap-2.5 group">
+              <span className="w-8 h-8 bg-[#6c63ff] rounded-lg flex items-center justify-center text-white text-sm shadow-sm shadow-[#6c63ff]/30 group-hover:shadow-md group-hover:shadow-[#6c63ff]/40 transition-shadow">📈</span>
+              <span className="text-base tracking-tight">Stock Dashboard</span>
             </Link>
-            <div className="flex gap-1 text-sm">
-              <Link href="/" className="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium">
-                Dashboard
-              </Link>
-              <Link href="/scanner" className="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium">
-                Scanner
-              </Link>
-              <Link href="/settings" className="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium">
-                Nastavení
-              </Link>
-            </div>
+            <NavLinks />
           </div>
         </nav>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">{children}</main>
