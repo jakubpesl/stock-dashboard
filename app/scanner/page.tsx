@@ -75,7 +75,7 @@ export default function ScannerPage() {
           fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tickers: [stock.symbol] }),
+            body: JSON.stringify({ tickers: [stock.symbol], lite: true }),
           }).then((r) => r.json()),
         ])
 
