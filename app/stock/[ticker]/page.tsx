@@ -12,12 +12,17 @@ type Tab = '1T' | '1M' | '3M' | '1R'
 type HistKey = 'history7d' | 'history1m' | 'history3m' | 'history1y'
 const tabMap: Record<Tab, HistKey> = { '1T': 'history7d', '1M': 'history1m', '3M': 'history3m', '1R': 'history1y' }
 
-interface Point { date: string; close: number }
+interface Point { date: string; close: number; volume?: number }
 interface MarketData {
   price: number; change: number; changePercent: number
   open: number; high: number; low: number; volume: number
   high52w: number; low52w: number; marketCap: number
   history7d: Point[]; history1m: Point[]; history3m: Point[]; history1y: Point[]
+}
+interface Fundamentals {
+  pe: number | null; forwardPe: number | null; eps: number | null
+  dividendYield: number | null; beta: number | null
+  analystTargetPrice: number | null; analystCount: number | null; analystKey: string | null
 }
 interface TermSignal {
   signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; reasoning: string
@@ -46,6 +51,7 @@ export default function StockDetail() {
   const [data, setData] = useState<MarketData | null>(null)
   const [signal, setSignal] = useState<Signal | null>(null)
   const [earningsDate, setEarningsDate] = useState<string | null>(null)
+  const [fundamentals, setFundamentals] = useState<Fundamentals | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeMsg, setAnalyzeMsg] = useState('')
 
@@ -55,6 +61,7 @@ export default function StockDetail() {
       .then((json) => {
         setData(json.data)
         setEarningsDate(json.earningsDate ?? null)
+        setFundamentals(json.fundamentals ?? null)
         if (json.signal) {
           setSignal(json.signal)
         } else {
@@ -104,6 +111,17 @@ export default function StockDetail() {
     ? Math.ceil((new Date(earningsDate).getTime() - Date.now()) / 86400000)
     : null
 
+  const analystUpside = fundamentals?.analystTargetPrice && data
+    ? parseFloat(((fundamentals.analystTargetPrice - data.price) / data.price * 100).toFixed(1))
+    : null
+  const analystKeyLabel: Record<string, string> = {
+    'strong_buy': 'Silně KUP', 'buy': 'KUP', 'hold': 'DRŽ', 'sell': 'PRODEJ', 'strong_sell': 'Silně PRODEJ',
+  }
+  const analystKeyColor: Record<string, string> = {
+    'strong_buy': 'text-emerald-700', 'buy': 'text-emerald-600', 'hold': 'text-amber-600',
+    'sell': 'text-red-500', 'strong_sell': 'text-red-600',
+  }
+
   const metricGroups = data ? [
     [
       ['Otevření', `$${data.open.toFixed(2)}`],
@@ -116,6 +134,13 @@ export default function StockDetail() {
       ['52t min',    `$${data.low52w.toFixed(2)}`],
       ['Tržní kap.', fmtCap(data.marketCap)],
     ],
+    [
+      ...(fundamentals?.pe        ? [['P/E',         `${fundamentals.pe.toFixed(1)}×`]]          : []),
+      ...(fundamentals?.forwardPe ? [['Fwd P/E',     `${fundamentals.forwardPe.toFixed(1)}×`]]   : []),
+      ...(fundamentals?.eps       ? [['EPS',         `$${fundamentals.eps.toFixed(2)}`]]          : []),
+      ...(fundamentals?.beta      ? [['Beta',        `${fundamentals.beta}`]]                     : []),
+      ...(fundamentals?.dividendYield ? [['Div. yield', `${fundamentals.dividendYield}%`]]        : []),
+    ].filter(Boolean),
     [
       ...(ma50  ? [['vs MA50',  `${data.price > ma50  ? '▲' : '▼'} $${ma50}`]]  : []),
       ...(ma200 ? [['vs MA200', `${data.price > ma200 ? '▲' : '▼'} $${ma200}`]] : []),
@@ -188,7 +213,7 @@ export default function StockDetail() {
           }
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col gap-0">
           <h3 className="font-semibold text-slate-900 mb-4">Klíčové údaje</h3>
           {metricGroups.length > 0 ? (
             <dl className="text-sm space-y-0">
@@ -208,6 +233,33 @@ export default function StockDetail() {
             </dl>
           ) : (
             <p className="text-slate-400 text-sm">Načítám…</p>
+          )}
+
+          {/* Analyst consensus */}
+          {fundamentals?.analystTargetPrice && (
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Analytici</p>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-slate-400 text-sm">Konsenzus</span>
+                <span className={`font-bold text-sm ${analystKeyColor[fundamentals.analystKey ?? ''] ?? 'text-slate-700'}`}>
+                  {analystKeyLabel[fundamentals.analystKey ?? ''] ?? fundamentals.analystKey ?? '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-slate-400 text-sm">Cílová cena</span>
+                <span className="font-bold text-sm text-[#6c63ff]">
+                  ${fundamentals.analystTargetPrice.toFixed(2)}
+                  {analystUpside !== null && (
+                    <span className={`ml-1.5 text-xs font-semibold ${analystUpside >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      ({analystUpside >= 0 ? '+' : ''}{analystUpside}%)
+                    </span>
+                  )}
+                </span>
+              </div>
+              {fundamentals.analystCount && (
+                <p className="text-xs text-slate-400">{fundamentals.analystCount} analytiků</p>
+              )}
+            </div>
           )}
         </div>
       </div>

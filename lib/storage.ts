@@ -61,6 +61,19 @@ export interface Signal {
   headlines: { title: string; url: string; source: string; publishedAt: string }[]
 }
 
+export interface HistoryPoint { date: string; close: number; volume?: number }
+
+export interface Fundamentals {
+  pe: number | null
+  forwardPe: number | null
+  eps: number | null
+  dividendYield: number | null
+  beta: number | null
+  analystTargetPrice: number | null
+  analystCount: number | null
+  analystKey: string | null
+}
+
 export interface CacheEntry {
   ticker: string
   price: number
@@ -73,10 +86,10 @@ export interface CacheEntry {
   high52w: number
   low52w: number
   marketCap: number
-  history7d: { date: string; close: number }[]
-  history1m: { date: string; close: number }[]
-  history3m: { date: string; close: number }[]
-  history1y: { date: string; close: number }[]
+  history7d: HistoryPoint[]
+  history1m: HistoryPoint[]
+  history3m: HistoryPoint[]
+  history1y: HistoryPoint[]
   fetchedAt: string
 }
 

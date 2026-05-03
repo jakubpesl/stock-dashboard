@@ -1,4 +1,4 @@
-import { CacheEntry, getCache, saveCache, isCacheFresh } from './storage'
+import { CacheEntry, Fundamentals, getCache, saveCache, isCacheFresh } from './storage'
 
 interface ChartMeta {
   regularMarketPrice: number
@@ -58,13 +58,15 @@ export async function fetchStockData(ticker: string): Promise<CacheEntry | null>
     const q = result.indicators?.quote?.[0] ?? {}
     const closes = q.close ?? []
 
-    const history: { date: string; close: number }[] = []
+    const volumes = q.volume ?? []
+    const history: { date: string; close: number; volume?: number }[] = []
     for (let i = 0; i < timestamps.length; i++) {
       const c = closes[i]
       if (c != null) {
         history.push({
           date: new Date(timestamps[i] * 1000).toISOString().split('T')[0],
           close: parseFloat(c.toFixed(2)),
+          volume: volumes[i] ?? undefined,
         })
       }
     }
@@ -113,6 +115,40 @@ export async function fetchStockData(ticker: string): Promise<CacheEntry | null>
   } catch (err) {
     console.error(`Yahoo Finance error for ${ticker}:`, err)
     return cached ?? null
+  }
+}
+
+export async function fetchFundamentals(ticker: string): Promise<Fundamentals | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=summaryDetail,defaultKeyStatistics,financialData`
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+      next: { revalidate: 14400 },
+    })
+    if (!res.ok) return null
+    const json = await res.json() as {
+      quoteSummary?: {
+        result?: Array<{
+          summaryDetail?: { trailingPE?: { raw: number }; forwardPE?: { raw: number }; dividendYield?: { raw: number }; beta?: { raw: number } }
+          defaultKeyStatistics?: { trailingEps?: { raw: number } }
+          financialData?: { targetMeanPrice?: { raw: number }; numberOfAnalystOpinions?: { raw: number }; recommendationKey?: string }
+        }>
+      }
+    }
+    const r = json.quoteSummary?.result?.[0]
+    if (!r) return null
+    return {
+      pe:                 r.summaryDetail?.trailingPE?.raw ?? null,
+      forwardPe:          r.summaryDetail?.forwardPE?.raw ?? null,
+      eps:                r.defaultKeyStatistics?.trailingEps?.raw ?? null,
+      dividendYield:      r.summaryDetail?.dividendYield?.raw ? parseFloat((r.summaryDetail.dividendYield.raw * 100).toFixed(2)) : null,
+      beta:               r.summaryDetail?.beta?.raw ? parseFloat(r.summaryDetail.beta.raw.toFixed(2)) : null,
+      analystTargetPrice: r.financialData?.targetMeanPrice?.raw ?? null,
+      analystCount:       r.financialData?.numberOfAnalystOpinions?.raw ?? null,
+      analystKey:         r.financialData?.recommendationKey ?? null,
+    }
+  } catch {
+    return null
   }
 }
 
