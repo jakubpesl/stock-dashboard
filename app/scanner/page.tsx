@@ -37,13 +37,36 @@ const SECTORS = ['Vše', 'Technology', 'Consumer', 'Finance', 'Healthcare', 'Ene
 const SIGNALS: ('BUY' | 'HOLD' | 'SELL')[] = ['BUY', 'HOLD', 'SELL']
 const SIG_LABELS = { BUY: 'KUP', HOLD: 'DRŽ', SELL: 'PRODEJ' }
 
+const AI_LIMIT_OPTIONS = [10, 15, 20, 30]
+
+function scoreOpportunity(price: number, high52w: number, low52w: number, changePercent: number, history1m: { close: number }[]): number {
+  let score = 0
+  const discount = high52w > 0 ? (high52w - price) / high52w * 100 : 0
+  if (discount > 10) score += 1
+  if (discount > 20) score += 2
+  if (discount > 30) score += 2
+  if (changePercent < -1) score += 1
+  if (history1m && history1m.length > 20) {
+    const change30d = (price - history1m[0].close) / history1m[0].close * 100
+    if (change30d < -5) score += 1
+    if (change30d < -15) score += 2
+  }
+  const distFromLow = low52w > 0 ? (price - low52w) / low52w * 100 : 100
+  if (distFromLow < 15) score += 2
+  return score
+}
+
 export default function ScannerPage() {
   const [running, setRunning] = useState(false)
+  const [phase, setPhase] = useState<'idle' | 'fetching' | 'analyzing'>('idle')
   const [progress, setProgress] = useState(0)
+  const [progressMax, setProgressMax] = useState(SP500_LIST.length)
+  const [phaseLabel, setPhaseLabel] = useState('')
   const [results, setResults] = useState<ScanResult[]>([])
   const [done, setDone] = useState(false)
   const [scannedAt, setScannedAt] = useState<string | null>(null)
   const [toast, setToast] = useState('')
+  const [aiLimit, setAiLimit] = useState(15)
 
   // Filters
   const [filterSignals, setFilterSignals] = useState<Set<'BUY' | 'HOLD' | 'SELL'>>(new Set(SIGNALS))
@@ -75,35 +98,61 @@ export default function ScannerPage() {
     setResults([])
     setDone(false)
     setProgress(0)
-    const fresh: ScanResult[] = []
+
+    // Phase 1: fetch price data for all tickers (no Claude)
+    setPhase('fetching')
+    setProgressMax(SP500_LIST.length)
+    setPhaseLabel('Načítám tržní data')
+
+    type StockData = { price: number; changePercent: number; high52w: number; low52w: number; history1m: { date: string; close: number }[] }
+    const priceData: { stock: SP500Stock; data: StockData }[] = []
 
     for (let i = 0; i < SP500_LIST.length; i++) {
       const stock = SP500_LIST[i]
       try {
-        const [stockRes, analyzeRes] = await Promise.all([
-          fetch(`/api/stock/${stock.symbol}`).then((r) => r.json()),
-          fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tickers: [stock.symbol], lite: true }),
-          }).then((r) => r.json()),
-        ])
+        const res = await fetch(`/api/stock/${stock.symbol}`).then((r) => r.json())
+        if (res.data) priceData.push({ stock, data: res.data })
+      } catch { /* skip */ }
+      setProgress(i + 1)
+      await new Promise((r) => setTimeout(r, 80))
+    }
 
-        const data = stockRes.data
+    // Phase 2: score & select top N for AI analysis
+    const scored = priceData.map(({ stock, data }) => ({
+      stock, data,
+      score: scoreOpportunity(data.price, data.high52w, data.low52w, data.changePercent, data.history1m ?? []),
+    })).sort((a, b) => b.score - a.score)
+
+    const toAnalyze = scored.slice(0, aiLimit)
+
+    setPhase('analyzing')
+    setProgressMax(toAnalyze.length)
+    setProgress(0)
+    setPhaseLabel(`AI analýza (top ${toAnalyze.length} z ${priceData.length} titulů)`)
+
+    const fresh: ScanResult[] = []
+    for (let i = 0; i < toAnalyze.length; i++) {
+      const { stock, data } = toAnalyze[i]
+      try {
+        const analyzeRes = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tickers: [stock.symbol], lite: true }),
+        }).then((r) => r.json())
+
         const signal = analyzeRes.results?.[0]
-        if (!data || !signal) { setProgress(i + 1); continue }
+        if (!signal) { setProgress(i + 1); continue }
 
         const discount = data.high52w > 0
           ? parseFloat(((data.high52w - data.price) / data.high52w * 100).toFixed(1))
           : 0
 
-        const result: ScanResult = {
+        fresh.push({
           stock, price: data.price, changePercent: data.changePercent, high52w: data.high52w,
           signal: signal.signal, confidence: signal.confidence, risk: signal.risk,
           priceTarget: signal.priceTarget, horizon: signal.horizon,
           reasoning: signal.reasoning, discount,
-        }
-        fresh.push(result)
+        })
         const sorted = sortResults(fresh)
         setResults(sorted)
         localStorage.setItem(SCAN_KEY, JSON.stringify(sorted))
@@ -116,6 +165,7 @@ export default function ScannerPage() {
     localStorage.setItem(SCAN_TIME_KEY, ts)
     setDone(true)
     setRunning(false)
+    setPhase('idle')
   }
 
   const buyResults = results.filter((r) => r.signal === 'BUY')
@@ -144,29 +194,41 @@ export default function ScannerPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">S&P 500 Scanner</h1>
           <p className="text-slate-500 text-sm mt-1">
-            AI analýza {SP500_LIST.length} top titulů — hledá podhodnocené akcie s potenciálem růstu
+            Screener {SP500_LIST.length} top titulů — AI analyzuje nejzajímavější příležitosti
           </p>
           {scannedAt && !running && (
             <p className="text-xs text-slate-400 mt-1">Poslední sken: {scannedAt}</p>
           )}
         </div>
-        <button onClick={runScanner} disabled={running}
-          className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/90 disabled:opacity-60 text-white rounded-lg font-medium transition-colors shadow-sm">
-          {running ? `Skenuji… ${progress}/${SP500_LIST.length}` : '🔍 Spustit scanner'}
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500 whitespace-nowrap">AI analýz max:</label>
+            <select value={aiLimit} onChange={(e) => setAiLimit(Number(e.target.value))} disabled={running}
+              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-[#6c63ff]">
+              {AI_LIMIT_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <button onClick={runScanner} disabled={running}
+            className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/90 disabled:opacity-60 text-white rounded-lg font-medium transition-colors shadow-sm">
+            {running ? `${phaseLabel}…` : '🔍 Spustit scanner'}
+          </button>
+        </div>
       </div>
 
       {/* Progress bar */}
       {running && (
         <div className="mb-6 bg-white border border-slate-200 rounded-xl p-4">
           <div className="flex justify-between text-sm text-slate-600 mb-2">
-            <span>Analyzuji <strong>{SP500_LIST[Math.min(progress, SP500_LIST.length - 1)]?.symbol}</strong>…</span>
-            <span>{progress}/{SP500_LIST.length}</span>
+            <span className="font-medium">{phaseLabel}</span>
+            <span className="tabular-nums text-slate-400">{progress}/{progressMax}</span>
           </div>
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-[#6c63ff] rounded-full transition-all duration-300"
-              style={{ width: `${(progress / SP500_LIST.length) * 100}%` }} />
+            <div className={`h-full rounded-full transition-all duration-300 ${phase === 'fetching' ? 'bg-slate-400' : 'bg-[#6c63ff]'}`}
+              style={{ width: `${progressMax > 0 ? (progress / progressMax) * 100 : 0}%` }} />
           </div>
+          {phase === 'fetching' && (
+            <p className="text-xs text-slate-400 mt-2">Stahuju tržní data (zdarma) — poté vyberu top {aiLimit} titulů pro AI</p>
+          )}
         </div>
       )}
 
