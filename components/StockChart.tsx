@@ -162,7 +162,7 @@ export default function StockChart({ data, mini = false }: { data: Point[]; mini
   const maxVol = volumes.length ? Math.max(...volumes) : 0
 
   const rsiData = chartData.filter((d) => d.rsi != null)
-  const currentRSI = rsiData.length ? rsiData[rsiData.length - 1].rsi : null
+  const currentRSI: number | null = rsiData.length ? (rsiData[rsiData.length - 1].rsi ?? null) : null
 
   return (
     <div>
