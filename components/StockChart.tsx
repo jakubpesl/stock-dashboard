@@ -36,15 +36,26 @@ function fmtY(v: number) {
   return `$${v.toFixed(0)}`
 }
 
+const MA_DESC: Record<string, string> = {
+  MA50:  '50denní klouzavý průměr — sleduje krátkodobý trend. Pokud cena je nad MA50, trh je v krátkodobém uptrendu.',
+  MA200: '200denní klouzavý průměr — sleduje dlouhodobý trend. Překřížení MA50 nad MA200 = „zlatý kříž" (silný BUY signál).',
+}
+
 function MABtn({ label, active, color, onClick }: { label: string; active: boolean; color: string; onClick: () => void }) {
   return (
-    <button onClick={onClick}
-      className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all ${
-        active ? `text-white border-transparent` : 'text-slate-400 border-slate-200 bg-white hover:border-slate-300'
-      }`}
-      style={active ? { background: color, borderColor: color } : {}}>
-      {label}
-    </button>
+    <div className="relative group">
+      <button onClick={onClick}
+        className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all ${
+          active ? `text-white border-transparent` : 'text-slate-400 border-slate-200 bg-white hover:border-slate-300'
+        }`}
+        style={active ? { background: color, borderColor: color } : {}}>
+        {label}
+      </button>
+      <div className="absolute bottom-full right-0 mb-2 w-56 bg-slate-900 text-white text-xs rounded-xl px-3 py-2 leading-relaxed shadow-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <span className="font-bold" style={{ color }}>{label}</span> — {MA_DESC[label]}
+        <span className="absolute bottom-[-4px] right-3 w-2 h-2 bg-slate-900 rotate-45" />
+      </div>
+    </div>
   )
 }
 
@@ -100,25 +111,9 @@ export default function StockChart({ data, mini = false }: { data: Point[]; mini
   return (
     <div>
       {(hasMA50 || hasMA200) && (
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <div className="flex gap-3 text-xs text-slate-400">
-            {hasMA50 && showMA50 && (
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-4 h-0.5 bg-amber-400 rounded" />
-                <span><span className="font-semibold text-slate-600">MA50</span> — 50denní průměr, krátkodobý trend</span>
-              </span>
-            )}
-            {hasMA200 && showMA200 && (
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-4 h-0.5 bg-blue-400 rounded" />
-                <span><span className="font-semibold text-slate-600">MA200</span> — 200denní průměr, dlouhodobý trend</span>
-              </span>
-            )}
-          </div>
-          <div className="flex gap-1.5">
-            {hasMA50  && <MABtn label="MA50"  active={showMA50}  color="#f59e0b" onClick={() => setShowMA50(v => !v)} />}
-            {hasMA200 && <MABtn label="MA200" active={showMA200} color="#3b82f6" onClick={() => setShowMA200(v => !v)} />}
-          </div>
+        <div className="flex justify-end gap-1.5 mb-3">
+          {hasMA50  && <MABtn label="MA50"  active={showMA50}  color="#f59e0b" onClick={() => setShowMA50(v => !v)} />}
+          {hasMA200 && <MABtn label="MA200" active={showMA200} color="#3b82f6" onClick={() => setShowMA200(v => !v)} />}
         </div>
       )}
       <ResponsiveContainer width="100%" height={300}>
