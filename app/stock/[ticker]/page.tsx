@@ -37,6 +37,16 @@ interface Signal {
   newsSentiment: { headline: string; sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' }[]
   headlines: { title: string; url: string; source: string; publishedAt: string }[]
 }
+interface EarningsSurprise {
+  period: string; actual: number; estimate: number; surprise: number; surprisePct: number
+}
+interface FinnhubNews {
+  headline: string; summary: string; url: string; source: string; datetime: number
+}
+interface FinnhubInsider {
+  netBuys: number; netSells: number; netShares: number; totalValue: number
+  transactions: { name: string; shares: number; price: number; date: string; type: 'BUY' | 'SELL' }[]
+}
 
 function fmtCap(n: number) {
   if (!n) return '—'
@@ -53,6 +63,9 @@ export default function StockDetail() {
   const [signal, setSignal] = useState<Signal | null>(null)
   const [earningsDate, setEarningsDate] = useState<string | null>(null)
   const [fundamentals, setFundamentals] = useState<Fundamentals | null>(null)
+  const [insiders, setInsiders] = useState<FinnhubInsider | null>(null)
+  const [earnings, setEarnings] = useState<EarningsSurprise[]>([])
+  const [finnhubNews, setFinnhubNews] = useState<FinnhubNews[]>([])
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeMsg, setAnalyzeMsg] = useState('')
 
@@ -63,6 +76,9 @@ export default function StockDetail() {
         setData(json.data)
         setEarningsDate(json.earningsDate ?? null)
         setFundamentals(json.fundamentals ?? null)
+        setInsiders(json.insiders ?? null)
+        setEarnings(json.earnings ?? [])
+        setFinnhubNews(json.finnhubNews ?? [])
         if (json.signal) {
           setSignal(json.signal)
         } else {
@@ -192,14 +208,14 @@ export default function StockDetail() {
                   ☠️ Death Cross
                 </span>
               )}
-              {fundamentals && fundamentals.insiderBuys > fundamentals.insiderSells && fundamentals.insiderBuys > 0 && (
+              {insiders && insiders.netBuys > insiders.netSells && insiders.netBuys > 0 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full">
-                  📈 Insideři kupují ({fundamentals.insiderBuys}×)
+                  📈 Insideři kupují ({insiders.netBuys}× za 90d)
                 </span>
               )}
-              {fundamentals && fundamentals.insiderSells > fundamentals.insiderBuys && fundamentals.insiderSells > 0 && (
+              {insiders && insiders.netSells > insiders.netBuys && insiders.netSells > 0 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-full">
-                  📉 Insideři prodávají ({fundamentals.insiderSells}×)
+                  📉 Insideři prodávají ({insiders.netSells}× za 90d)
                 </span>
               )}
             </div>
@@ -377,10 +393,67 @@ export default function StockDetail() {
         </div>
       )}
 
-      {/* News */}
+      {/* Earnings surprises */}
+      {earnings.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
+          <h3 className="font-semibold text-slate-900 mb-4">Výsledky hospodaření — poslední 4 čtvrtletí</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                  <th className="text-left pb-2">Čtvrtletí</th>
+                  <th className="text-right pb-2">Odhad EPS</th>
+                  <th className="text-right pb-2">Skutečný EPS</th>
+                  <th className="text-right pb-2">Překvapení</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {earnings.map((e) => (
+                  <tr key={e.period}>
+                    <td className="py-2.5 text-slate-500">{e.period}</td>
+                    <td className="py-2.5 text-right text-slate-600 tabular-nums">${e.estimate.toFixed(2)}</td>
+                    <td className="py-2.5 text-right font-semibold text-slate-900 tabular-nums">${e.actual.toFixed(2)}</td>
+                    <td className="py-2.5 text-right tabular-nums">
+                      <span className={`font-semibold ${e.surprisePct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {e.surprisePct >= 0 ? '+' : ''}{e.surprisePct}%
+                      </span>
+                      <span className="text-slate-400 text-xs ml-1">
+                        {e.surprisePct >= 5 ? '✓ beat' : e.surprisePct <= -5 ? '✗ miss' : '≈ inline'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* News — Finnhub preferred, fallback to AI headlines */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         <h3 className="font-semibold text-slate-900 mb-4">Zprávy</h3>
-        <NewsFeed headlines={signal?.headlines ?? []} newsSentiment={signal?.newsSentiment ?? []} />
+        {finnhubNews.length > 0 ? (
+          <div className="space-y-3">
+            {finnhubNews.map((n, i) => (
+              <a key={i} href={n.url} target="_blank" rel="noopener noreferrer"
+                className="block p-3 rounded-xl border border-slate-100 hover:border-[#6c63ff]/30 hover:bg-slate-50 transition-all group">
+                <p className="text-sm font-medium text-slate-800 group-hover:text-[#6c63ff] leading-snug">{n.headline}</p>
+                {n.summary && (
+                  <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">{n.summary}</p>
+                )}
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs text-slate-400">{n.source}</span>
+                  <span className="text-slate-200">·</span>
+                  <span className="text-xs text-slate-400">
+                    {new Date(n.datetime * 1000).toLocaleDateString('cs-CZ')}
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <NewsFeed headlines={signal?.headlines ?? []} newsSentiment={signal?.newsSentiment ?? []} />
+        )}
       </div>
     </div>
   )

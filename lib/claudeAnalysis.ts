@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { fetchStockData } from './yahooFinance'
 import { fetchNewsHeadlines, NewsHeadline } from './newsRss'
+import { fetchFinnhubNews, fetchEarningsSurprises, fetchFinnhubInsiders } from './finnhub'
 import { calculateRSI, calcChange, calculateMACD, calcMA, priceVsMA, detectCrossover, calculateATR } from './indicators'
 import { getSignal, saveSignal, Signal, TermSignal } from './storage'
 
@@ -46,10 +47,41 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
       } catch { /* non-critical */ }
     }
 
-    const headlines: NewsHeadline[] = lite ? [] : await fetchNewsHeadlines(ticker)
-    const headlineLines = headlines.length > 0
-      ? headlines.map((h, i) => `${i + 1}. ${h.title}`).join('\n')
-      : '(no recent news)'
+    // News: Finnhub preferred, RSS fallback
+    let headlines: NewsHeadline[] = []
+    let headlineLines = '(no recent news)'
+    if (!lite) {
+      const finnhubNews = await fetchFinnhubNews(ticker)
+      if (finnhubNews.length > 0) {
+        headlineLines = finnhubNews.map((n, i) => `${i + 1}. ${n.headline}`).join('\n')
+      } else {
+        headlines = await fetchNewsHeadlines(ticker)
+        headlineLines = headlines.length > 0
+          ? headlines.map((h, i) => `${i + 1}. ${h.title}`).join('\n')
+          : '(no recent news)'
+      }
+    }
+
+    // Earnings surprises context
+    let earningsContext = ''
+    if (!lite) {
+      const [surprises, insiders] = await Promise.all([
+        fetchEarningsSurprises(ticker),
+        fetchFinnhubInsiders(ticker),
+      ])
+      if (surprises.length > 0) {
+        const last = surprises[0]
+        earningsContext = `Last earnings (${last.period}): EPS actual $${last.actual} vs estimate $${last.estimate} (${last.surprisePct >= 0 ? '+' : ''}${last.surprisePct}% surprise)`
+      }
+      if (insiders) {
+        const insiderLine = insiders.netBuys > insiders.netSells
+          ? `Insider activity (90d): ${insiders.netBuys} purchases vs ${insiders.netSells} sales — NET BUYING`
+          : insiders.netSells > insiders.netBuys
+          ? `Insider activity (90d): ${insiders.netSells} sales vs ${insiders.netBuys} purchases — NET SELLING`
+          : ''
+        if (insiderLine) earningsContext += (earningsContext ? '\n' : '') + insiderLine
+      }
+    }
 
     // Lite mode — single Haiku call (scanner)
     if (lite) {
@@ -103,7 +135,7 @@ vs MA50: ${priceVsMA(price, ma50)} | vs MA200: ${priceVsMA(price, ma200)}
 ${goldenCross ?? ''}${crossover ? ` ⚡ RECENT ${crossover.toUpperCase().replace('_', ' ')} — strong signal!` : ''}
 52w high: $${data.high52w} (${distFrom52wHigh}%) | 52w low: $${data.low52w} (+${distFrom52wLow}%)
 ATR(14): $${atr ?? 'N/A'} | ATR-based stop: $${atrStop ?? 'N/A'} (1.5× ATR below entry)
-${marketContext}
+${marketContext}${earningsContext ? `\n${earningsContext}` : ''}
 Recent news:\n${headlineLines}`
 
     // Phase 1: parallel bull and bear analyst (Haiku — fast & cheap)
