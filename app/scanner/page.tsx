@@ -110,7 +110,7 @@ export default function ScannerPage() {
     for (let i = 0; i < SP500_LIST.length; i++) {
       const stock = SP500_LIST[i]
       try {
-        const res = await fetch(`/api/stock/${stock.symbol}`).then((r) => r.json())
+        const res = await fetch(`/api/stock/${stock.symbol}?priceOnly=true`).then((r) => r.json())
         if (res.data) priceData.push({ stock, data: res.data })
       } catch { /* skip */ }
       setProgress(i + 1)
@@ -377,14 +377,25 @@ export default function ScannerPage() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!running && results.length === 0 && (
+      {/* Empty state — never run */}
+      {!running && results.length === 0 && !done && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="w-20 h-20 bg-[#6c63ff]/10 rounded-2xl flex items-center justify-center text-4xl mb-6">🔍</div>
           <h2 className="text-xl font-bold text-slate-900 mb-2">Scanner připraven</h2>
           <p className="text-slate-500 max-w-md">
             Klikni na „Spustit scanner" — AI proanalizuje {SP500_LIST.length} top S&P 500 titulů
             a seřadí je podle potenciálu. Výsledky se průběžně ukládají.
+          </p>
+        </div>
+      )}
+
+      {/* Empty state — scan ran but 0 results */}
+      {!running && results.length === 0 && done && (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center text-4xl mb-6">⚠️</div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Sken dokončen bez výsledků</h2>
+          <p className="text-slate-500 max-w-md">
+            Nepodařilo se získat AI signály. Zkontroluj připojení nebo zkus spustit scanner znovu.
           </p>
         </div>
       )}

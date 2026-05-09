@@ -4,10 +4,20 @@ import { fetchFinnhubInsiders, fetchEarningsSurprises, fetchFinnhubNews } from '
 import { getSignal } from '@/lib/storage'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { ticker: string } }
 ) {
   const ticker = params.ticker.toUpperCase()
+  const priceOnly = req.nextUrl.searchParams.get('priceOnly') === 'true'
+
+  if (priceOnly) {
+    const [data, signal] = await Promise.all([
+      fetchStockData(ticker),
+      Promise.resolve(getSignal(ticker)),
+    ])
+    return NextResponse.json({ data, signal })
+  }
+
   const [data, signal, earningsDate, fundamentals, insiders, earnings, finnhubNews] = await Promise.all([
     fetchStockData(ticker),
     Promise.resolve(getSignal(ticker)),
