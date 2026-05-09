@@ -437,6 +437,57 @@ export default function StockDetail() {
         </div>
       )}
 
+      {/* Insider transactions */}
+      {insiders && (insiders.netBuys > 0 || insiders.netSells > 0) && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
+          <h3 className="font-semibold text-slate-900 mb-3">Insider transakce — posledních 90 dní</h3>
+          {/* Summary bar */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden flex">
+              {insiders.netBuys + insiders.netSells > 0 && (
+                <div
+                  className="h-full bg-emerald-400 rounded-l-full transition-all"
+                  style={{ width: `${Math.round(insiders.netBuys / (insiders.netBuys + insiders.netSells) * 100)}%` }}
+                />
+              )}
+            </div>
+            <span className="text-xs text-emerald-600 font-semibold whitespace-nowrap">{insiders.netBuys}× nákup</span>
+            <span className="text-slate-300 text-xs">|</span>
+            <span className="text-xs text-red-500 font-semibold whitespace-nowrap">{insiders.netSells}× prodej</span>
+            {insiders.totalValue !== 0 && (
+              <>
+                <span className="text-slate-300 text-xs">|</span>
+                <span className={`text-xs font-semibold whitespace-nowrap ${insiders.totalValue > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  net {insiders.totalValue > 0 ? '+' : ''}
+                  {Math.abs(insiders.totalValue) >= 1_000_000
+                    ? `$${(insiders.totalValue / 1_000_000).toFixed(1)}M`
+                    : `$${Math.round(Math.abs(insiders.totalValue) / 1_000)}k`}
+                </span>
+              </>
+            )}
+          </div>
+          {/* Transaction list */}
+          {insiders.transactions.length > 0 && (
+            <div className="space-y-1.5">
+              {insiders.transactions.slice(0, 6).map((tx, i) => (
+                <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${tx.type === 'BUY' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                    <span className="text-slate-700 font-medium truncate max-w-[140px]">{tx.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-slate-400 tabular-nums">
+                    <span>{tx.type === 'BUY' ? <span className="text-emerald-600 font-semibold">BUY</span> : <span className="text-red-500 font-semibold">SELL</span>}</span>
+                    <span>{tx.shares.toLocaleString('cs-CZ')} ks</span>
+                    {tx.price > 0 && <span>@ ${tx.price.toFixed(0)}</span>}
+                    <span>{new Date(tx.date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* News — Finnhub preferred, fallback to AI headlines */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         <h3 className="font-semibold text-slate-900 mb-4">Zprávy</h3>
