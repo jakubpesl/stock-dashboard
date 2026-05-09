@@ -208,11 +208,21 @@ export default function StockDetail() {
                   ☠️ Death Cross
                 </span>
               )}
-              {insiders && insiders.netBuys >= 2 && insiders.netBuys > insiders.netSells && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full">
-                  📈 Insideři nakupují ({insiders.netBuys}× za 90d)
-                </span>
-              )}
+              {insiders && insiders.netBuys >= 2 && insiders.netBuys > insiders.netSells && (() => {
+                const total = insiders.netBuys + insiders.netSells
+                const buyPct = Math.round((insiders.netBuys / total) * 100)
+                const netVal = insiders.totalValue
+                const valStr = netVal >= 1_000_000
+                  ? `$${(netVal / 1_000_000).toFixed(1)}M`
+                  : netVal >= 1_000
+                  ? `$${Math.round(netVal / 1_000)}k`
+                  : `$${Math.round(netVal)}`
+                return (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full">
+                    📈 Insideři: {insiders.netBuys}× buy / {insiders.netSells}× sell ({buyPct}%) · net {valStr}
+                  </span>
+                )
+              })()}
             </div>
           )}
         </div>
