@@ -440,7 +440,14 @@ export default function StockDetail() {
       {/* Insider transactions */}
       {insiders && (insiders.netBuys > 0 || insiders.netSells > 0) && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
-          <h3 className="font-semibold text-slate-900 mb-3">Insider transakce — posledních 90 dní</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-slate-900">Insider transakce — posledních 90 dní</h3>
+            {insiders.transactions[0]?.date && (
+              <span className="text-xs text-slate-400">
+                Poslední: {new Date(insiders.transactions[0].date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            )}
+          </div>
           {/* Summary bar */}
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden flex">

@@ -49,6 +49,7 @@ export async function fetchFinnhubInsiders(symbol: string): Promise<FinnhubInsid
       date: tx.transactionDate, type: isBuy ? 'BUY' : 'SELL',
     })
   }
+  result.transactions.sort((a, b) => b.date.localeCompare(a.date))
   return result
 }
 
