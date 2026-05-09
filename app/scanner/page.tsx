@@ -21,9 +21,9 @@ interface ScanResult {
 }
 
 const signalStyle = {
-  BUY: { pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'KUP' },
-  HOLD: { pill: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: 'DRŽ' },
-  SELL: { pill: 'bg-red-50 text-red-600 border-red-200', dot: 'bg-red-500', label: 'PRODEJ' },
+  BUY:  { pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', bar: 'bg-gradient-to-r from-emerald-400 to-teal-400',  label: 'KUP' },
+  HOLD: { pill: 'bg-amber-50 text-amber-700 border-amber-200',       dot: 'bg-amber-500',   bar: 'bg-gradient-to-r from-amber-400 to-orange-300',   label: 'DRŽ' },
+  SELL: { pill: 'bg-red-50 text-red-600 border-red-200',             dot: 'bg-red-500',     bar: 'bg-gradient-to-r from-red-500 to-rose-400',        label: 'PRODEJ' },
 }
 
 function sortResults(results: ScanResult[]) {
@@ -209,7 +209,7 @@ export default function ScannerPage() {
             </select>
           </div>
           <button onClick={runScanner} disabled={running}
-            className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/90 disabled:opacity-60 text-white rounded-lg font-medium transition-colors shadow-sm">
+            className="px-5 py-2.5 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px disabled:opacity-60 text-white rounded-lg font-medium transition-all shadow-md shadow-[#6c63ff]/20">
             {running ? `${phaseLabel}…` : '🔍 Spustit scanner'}
           </button>
         </div>
@@ -223,7 +223,7 @@ export default function ScannerPage() {
             <span className="tabular-nums text-slate-400">{progress}/{progressMax}</span>
           </div>
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-300 ${phase === 'fetching' ? 'bg-slate-400' : 'bg-[#6c63ff]'}`}
+            <div className={`h-full rounded-full transition-all duration-300 ${phase === 'fetching' ? 'bg-slate-400' : 'bg-gradient-to-r from-[#6c63ff] to-[#818cf8]'}`}
               style={{ width: `${progressMax > 0 ? (progress / progressMax) * 100 : 0}%` }} />
           </div>
           {phase === 'fetching' && (
@@ -306,7 +306,7 @@ export default function ScannerPage() {
             const upside = r.priceTarget ? ((r.priceTarget - r.price) / r.price * 100).toFixed(1) : null
             return (
               <div key={r.stock.symbol}
-                className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-4 hover:border-[#6c63ff]/30 hover:shadow-sm transition-all">
+                className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-4 hover:border-[#6c63ff]/40 hover:shadow-md hover:shadow-[#6c63ff]/8 hover:-translate-y-0.5 transition-all duration-200">
                 {/* Ticker */}
                 <div className="w-28 shrink-0">
                   <div className="font-bold text-slate-900">{r.stock.symbol}</div>
@@ -324,7 +324,7 @@ export default function ScannerPage() {
                 <div className="text-center min-w-14">
                   <div className="text-lg font-bold text-slate-900 tabular-nums">{r.confidence}%</div>
                   <div className="h-1 bg-slate-100 rounded-full overflow-hidden mt-1 w-14">
-                    <div className={`h-full rounded-full ${st.dot}`} style={{ width: `${r.confidence}%` }} />
+                    <div className={`h-full rounded-full ${st.bar}`} style={{ width: `${r.confidence}%` }} />
                   </div>
                 </div>
 

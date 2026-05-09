@@ -94,7 +94,7 @@ export default function Dashboard() {
             {refreshing ? 'Obnovuji…' : '↻ Obnovit data'}
           </button>
           <button onClick={handleAnalyzeAll} disabled={analyzing || refreshing || tickers.length === 0}
-            className="px-4 py-2 bg-[#6c63ff] hover:bg-[#6c63ff]/90 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
+            className="px-4 py-2 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-all shadow-md shadow-[#6c63ff]/20">
             {analyzing ? '🤖 Analyzuji…' : '🤖 Analyzovat vše'}
           </button>
         </div>
@@ -111,7 +111,7 @@ export default function Dashboard() {
           <p className="text-slate-500 mb-6 max-w-sm">Přidejte první ticker v nastavení nebo nechte Scanner najít příležitosti.</p>
           <div className="flex gap-3">
             <Link href="/settings"
-              className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/90 text-white rounded-lg font-medium transition-colors shadow-sm">
+              className="px-5 py-2.5 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px text-white rounded-lg font-medium transition-all shadow-md shadow-[#6c63ff]/20">
               Přidat akcii
             </Link>
             <Link href="/scanner"

@@ -46,3 +46,21 @@ body {
 .signal-buy  { box-shadow: 0 0 0 3px rgba(16,185,129,0.12), 0 1px 3px rgba(16,185,129,0.1); }
 .signal-sell { box-shadow: 0 0 0 3px rgba(239,68,68,0.12),  0 1px 3px rgba(239,68,68,0.1); }
 .signal-hold { box-shadow: 0 0 0 3px rgba(245,158,11,0.12), 0 1px 3px rgba(245,158,11,0.1); }
+
+/* Section heading accent bar */
+.accent-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+.accent-heading::before {
+  content: '';
+  display: block;
+  width: 3px;
+  min-width: 3px;
+  height: 1rem;
+  background: linear-gradient(to bottom, #6c63ff, #818cf8);
+  border-radius: 9999px;
+}

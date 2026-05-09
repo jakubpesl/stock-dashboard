@@ -231,7 +231,7 @@ export default function StockDetail() {
         </div>
         <div className="flex flex-col items-end gap-2">
           <button onClick={analyze} disabled={analyzing}
-            className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/90 disabled:opacity-50 text-white rounded-lg font-medium transition-colors shadow-sm">
+            className="px-5 py-2.5 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px disabled:opacity-50 text-white rounded-lg font-medium transition-all shadow-md shadow-[#6c63ff]/20">
             {analyzing ? '🤖 Analyzuji…' : '🤖 Analyzovat nyní'}
           </button>
           {analyzeMsg && (
@@ -248,7 +248,7 @@ export default function StockDetail() {
           <div className="flex gap-1 mb-5">
             {(['1T', '1M', '3M', '1R'] as Tab[]).map((t) => (
               <button key={t} onClick={() => setTab(t)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${tab === t ? 'bg-[#6c63ff] text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${tab === t ? 'bg-gradient-to-r from-[#6c63ff] to-[#818cf8] text-white shadow-md shadow-[#6c63ff]/20' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
                 {t}
               </button>
             ))}
@@ -260,17 +260,17 @@ export default function StockDetail() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col gap-0">
-          <h3 className="font-semibold text-slate-900 mb-4">Klíčové údaje</h3>
+          <h3 className="accent-heading mb-4">Klíčové údaje</h3>
           {metricGroups.length > 0 ? (
             <dl className="text-sm space-y-0">
               {metricGroups.map((group, gi) => (
                 <div key={gi}>
                   {gi > 0 && <div className="border-t border-slate-100 my-3" />}
-                  <div className="space-y-2.5">
+                  <div className="space-y-1.5">
                     {group.map(([label, value]) => (
-                      <div key={label} className="flex justify-between items-center">
-                        <dt className="text-slate-400">{label}</dt>
-                        <dd className="font-semibold text-slate-900 tabular-nums">{value}</dd>
+                      <div key={label} className="flex justify-between items-center bg-slate-50 rounded-xl px-3 py-2">
+                        <dt className="text-slate-400 text-xs">{label}</dt>
+                        <dd className="font-bold text-slate-900 tabular-nums text-sm">{value}</dd>
                       </div>
                     ))}
                   </div>
@@ -315,7 +315,7 @@ export default function StockDetail() {
         <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
           <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
             <div className="flex items-center gap-3 flex-wrap">
-              <h3 className="font-semibold text-slate-900">AI Analýza</h3>
+              <h3 className="accent-heading">AI Analýza</h3>
               {/* Track record badge */}
               {signalPnL !== null && signalDaysAgo !== null && signalDaysAgo > 0 && (
                 <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
@@ -404,7 +404,7 @@ export default function StockDetail() {
       {/* Earnings surprises */}
       {earnings.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
-          <h3 className="font-semibold text-slate-900 mb-4">Výsledky hospodaření — poslední 4 čtvrtletí</h3>
+          <h3 className="accent-heading mb-4">Výsledky hospodaření — poslední 4 čtvrtletí</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -441,7 +441,7 @@ export default function StockDetail() {
       {insiders && (insiders.netBuys > 0 || insiders.netSells > 0) && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-slate-900">Insider transakce — posledních 90 dní</h3>
+            <h3 className="accent-heading">Insider transakce — posledních 90 dní</h3>
             {insiders.transactions[0]?.date && (
               <span className="text-xs text-slate-400">
                 Poslední: {new Date(insiders.transactions[0].date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -497,7 +497,7 @@ export default function StockDetail() {
 
       {/* News — Finnhub preferred, fallback to AI headlines */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-        <h3 className="font-semibold text-slate-900 mb-4">Zprávy</h3>
+        <h3 className="accent-heading mb-4">Zprávy</h3>
         {finnhubNews.length > 0 ? (
           <div className="space-y-3">
             {finnhubNews.map((n, i) => (

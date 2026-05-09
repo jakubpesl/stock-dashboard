@@ -6,9 +6,9 @@ interface Signal { signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; risk: st
 interface CacheEntry { price: number; change: number; changePercent: number; high52w: number; low52w: number; history7d: { date: string; close: number }[] }
 
 const signalCfg = {
-  BUY:  { label: 'KUP',    bar: 'bg-emerald-500', pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', glow: 'signal-buy' },
-  HOLD: { label: 'DRŽ',    bar: 'bg-amber-400',   pill: 'bg-amber-50 text-amber-700 border-amber-200',       glow: 'signal-hold' },
-  SELL: { label: 'PRODEJ', bar: 'bg-red-500',      pill: 'bg-red-50 text-red-600 border-red-200',            glow: 'signal-sell' },
+  BUY:  { label: 'KUP',    bar: 'bg-gradient-to-r from-emerald-400 to-teal-400',   pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', glow: 'signal-buy' },
+  HOLD: { label: 'DRŽ',    bar: 'bg-gradient-to-r from-amber-400 to-orange-300',   pill: 'bg-amber-50 text-amber-700 border-amber-200',       glow: 'signal-hold' },
+  SELL: { label: 'PRODEJ', bar: 'bg-gradient-to-r from-red-500 to-rose-400',       pill: 'bg-red-50 text-red-600 border-red-200',            glow: 'signal-sell' },
 }
 
 export default function StockCard({ symbol, alias, data, signal }: {
