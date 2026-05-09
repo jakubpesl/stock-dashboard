@@ -142,6 +142,19 @@ export default function StockDetail() {
   const analystUpside = fundamentals?.analystTargetPrice && data
     ? parseFloat(((fundamentals.analystTargetPrice - data.price) / data.price * 100).toFixed(1))
     : null
+
+  const insiderBadge = (() => {
+    if (!insiders || insiders.netBuys < 2 || insiders.netBuys <= insiders.netSells) return null
+    const total = insiders.netBuys + insiders.netSells
+    const buyPct = Math.round((insiders.netBuys / total) * 100)
+    const netVal = insiders.totalValue ?? 0
+    const valStr = netVal >= 1_000_000
+      ? `$${(netVal / 1_000_000).toFixed(1)}M`
+      : netVal >= 1_000
+      ? `$${Math.round(netVal / 1_000)}k`
+      : netVal > 0 ? `$${Math.round(netVal)}` : null
+    return { buys: insiders.netBuys, sells: insiders.netSells, buyPct, valStr }
+  })()
   const analystKeyLabel: Record<string, string> = {
     'strong_buy': 'Silně KUP', 'buy': 'KUP', 'hold': 'DRŽ', 'sell': 'PRODEJ', 'strong_sell': 'Silně PRODEJ',
   }
@@ -208,21 +221,11 @@ export default function StockDetail() {
                   ☠️ Death Cross
                 </span>
               )}
-              {insiders && insiders.netBuys >= 2 && insiders.netBuys > insiders.netSells && (() => {
-                const total = insiders.netBuys + insiders.netSells
-                const buyPct = Math.round((insiders.netBuys / total) * 100)
-                const netVal = insiders.totalValue
-                const valStr = netVal >= 1_000_000
-                  ? `$${(netVal / 1_000_000).toFixed(1)}M`
-                  : netVal >= 1_000
-                  ? `$${Math.round(netVal / 1_000)}k`
-                  : `$${Math.round(netVal)}`
-                return (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full">
-                    📈 Insideři: {insiders.netBuys}× buy / {insiders.netSells}× sell ({buyPct}%) · net {valStr}
-                  </span>
-                )
-              })()}
+              {insiderBadge && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full">
+                  📈 Insideři: {insiderBadge.buys}× buy / {insiderBadge.sells}× sell ({insiderBadge.buyPct}%){insiderBadge.valStr ? ` · net ${insiderBadge.valStr}` : ''}
+                </span>
+              )}
             </div>
           )}
         </div>
