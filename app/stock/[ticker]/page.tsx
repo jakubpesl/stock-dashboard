@@ -208,14 +208,9 @@ export default function StockDetail() {
                   ☠️ Death Cross
                 </span>
               )}
-              {insiders && insiders.netBuys > insiders.netSells && insiders.netBuys > 0 && (
+              {insiders && insiders.netBuys >= 2 && insiders.netBuys > insiders.netSells && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full">
-                  📈 Insideři kupují ({insiders.netBuys}× za 90d)
-                </span>
-              )}
-              {insiders && insiders.netSells > insiders.netBuys && insiders.netSells > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-full">
-                  📉 Insideři prodávají ({insiders.netSells}× za 90d)
+                  📈 Insideři nakupují ({insiders.netBuys}× za 90d)
                 </span>
               )}
             </div>
