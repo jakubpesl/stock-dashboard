@@ -23,6 +23,7 @@ interface Fundamentals {
   pe: number | null; forwardPe: number | null; eps: number | null
   dividendYield: number | null; beta: number | null
   analystTargetPrice: number | null; analystCount: number | null; analystKey: string | null
+  insiderBuys: number; insiderSells: number; insiderNetValue: number
 }
 interface TermSignal {
   signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; reasoning: string
@@ -107,6 +108,17 @@ export default function StockDetail() {
   const ma50  = calcMA(closes1y, 50)
   const ma200 = calcMA(closes1y, 200)
 
+  // AI track record
+  const signalPnL = signal && data
+    ? parseFloat(((data.price - signal.price) / signal.price * 100).toFixed(2))
+    : null
+  const signalDaysAgo = signal
+    ? Math.floor((Date.now() - new Date(signal.analyzedAt).getTime()) / 86400000)
+    : null
+  const trackCorrect = signalPnL !== null && signal
+    ? (signal.signal === 'BUY' && signalPnL > 0) || (signal.signal === 'SELL' && signalPnL < 0)
+    : null
+
   const daysToEarnings = earningsDate
     ? Math.ceil((new Date(earningsDate).getTime() - Date.now()) / 86400000)
     : null
@@ -178,6 +190,16 @@ export default function StockDetail() {
               {crossover === 'death_cross' && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 border border-slate-300 text-slate-600 text-xs font-semibold rounded-full">
                   ☠️ Death Cross
+                </span>
+              )}
+              {fundamentals && fundamentals.insiderBuys > fundamentals.insiderSells && fundamentals.insiderBuys > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full">
+                  📈 Insideři kupují ({fundamentals.insiderBuys}×)
+                </span>
+              )}
+              {fundamentals && fundamentals.insiderSells > fundamentals.insiderBuys && fundamentals.insiderSells > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-full">
+                  📉 Insideři prodávají ({fundamentals.insiderSells}×)
                 </span>
               )}
             </div>
@@ -267,8 +289,21 @@ export default function StockDetail() {
       {/* AI Signal */}
       {signal && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="font-semibold text-slate-900">AI Analýza</h3>
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h3 className="font-semibold text-slate-900">AI Analýza</h3>
+              {/* Track record badge */}
+              {signalPnL !== null && signalDaysAgo !== null && signalDaysAgo > 0 && (
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                  trackCorrect
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                    : 'bg-red-50 border-red-200 text-red-600'
+                }`}>
+                  {signal.signal} za ${signal.price.toFixed(2)} →
+                  {signalPnL >= 0 ? ' +' : ' '}{signalPnL}% ({signalDaysAgo}d)
+                </span>
+              )}
+            </div>
             <span className="text-xs text-slate-400">
               {new Date(signal.analyzedAt).toLocaleString('cs-CZ')}
             </span>

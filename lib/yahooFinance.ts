@@ -120,7 +120,7 @@ export async function fetchStockData(ticker: string): Promise<CacheEntry | null>
 
 export async function fetchFundamentals(ticker: string): Promise<Fundamentals | null> {
   try {
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=summaryDetail,defaultKeyStatistics,financialData`
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=summaryDetail,defaultKeyStatistics,financialData,insiderTransactions`
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
       next: { revalidate: 14400 },
@@ -132,11 +132,34 @@ export async function fetchFundamentals(ticker: string): Promise<Fundamentals | 
           summaryDetail?: { trailingPE?: { raw: number }; forwardPE?: { raw: number }; dividendYield?: { raw: number }; beta?: { raw: number } }
           defaultKeyStatistics?: { trailingEps?: { raw: number } }
           financialData?: { targetMeanPrice?: { raw: number }; numberOfAnalystOpinions?: { raw: number }; recommendationKey?: string }
+          insiderTransactions?: {
+            transactions?: Array<{
+              transactionDescription?: string
+              shares?: { raw: number }
+              value?: { raw: number }
+              startDate?: { raw: number }
+            }>
+          }
         }>
       }
     }
     const r = json.quoteSummary?.result?.[0]
     if (!r) return null
+
+    // Insider transactions — last 90 days
+    const cutoff = Date.now() - 90 * 86400000
+    let insiderBuys = 0, insiderSells = 0, insiderNetValue = 0
+    for (const tx of r.insiderTransactions?.transactions ?? []) {
+      if (!tx.startDate?.raw || tx.startDate.raw * 1000 < cutoff) continue
+      const desc = tx.transactionDescription?.toLowerCase() ?? ''
+      const val = tx.value?.raw ?? 0
+      if (desc.includes('purchase') || desc === 'buy') {
+        insiderBuys++; insiderNetValue += val
+      } else if (desc.includes('sale') || desc.includes('sell')) {
+        insiderSells++; insiderNetValue -= val
+      }
+    }
+
     return {
       pe:                 r.summaryDetail?.trailingPE?.raw ?? null,
       forwardPe:          r.summaryDetail?.forwardPE?.raw ?? null,
@@ -146,6 +169,9 @@ export async function fetchFundamentals(ticker: string): Promise<Fundamentals | 
       analystTargetPrice: r.financialData?.targetMeanPrice?.raw ?? null,
       analystCount:       r.financialData?.numberOfAnalystOpinions?.raw ?? null,
       analystKey:         r.financialData?.recommendationKey ?? null,
+      insiderBuys,
+      insiderSells,
+      insiderNetValue,
     }
   } catch {
     return null

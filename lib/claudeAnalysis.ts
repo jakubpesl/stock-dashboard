@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { fetchStockData } from './yahooFinance'
 import { fetchNewsHeadlines, NewsHeadline } from './newsRss'
-import { calculateRSI, calcChange, calculateMACD, calcMA, priceVsMA, detectCrossover } from './indicators'
+import { calculateRSI, calcChange, calculateMACD, calcMA, priceVsMA, detectCrossover, calculateATR } from './indicators'
 import { getSignal, saveSignal, Signal, TermSignal } from './storage'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -19,6 +19,7 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
     const macd = calculateMACD(closes)
     const ma50  = calcMA(closes, 50)
     const ma200 = calcMA(closes, 200)
+    const atr   = calculateATR(closes)
     const pct7d  = calcChange(data.history1y, 7)
     const pct30d = calcChange(data.history1y, 30)
     const pct90d = calcChange(data.history1y, 90)
@@ -26,8 +27,9 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
     const distFrom52wHigh = data.high52w > 0 ? parseFloat(((price - data.high52w) / data.high52w * 100).toFixed(1)) : null
     const goldenCross = ma50 && ma200 ? (ma50 > ma200 ? 'MA50 above MA200 (bullish)' : 'MA50 below MA200 (bearish)') : null
     const crossover = detectCrossover(closes)
+    const atrStop = atr ? parseFloat((price - 1.5 * atr).toFixed(2)) : null
 
-    // Market context — SPY trend (skip for SPY itself)
+    // Market context — SPY trend
     let marketContext = ''
     if (ticker !== 'SPY') {
       try {
@@ -49,10 +51,9 @@ export async function analyzeStock(ticker: string, lite = false): Promise<Signal
       ? headlines.map((h, i) => `${i + 1}. ${h.title}`).join('\n')
       : '(no recent news)'
 
-    const model = lite ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6'
-
-    const technicalData = lite
-      ? `Ticker: ${ticker}
+    // Lite mode — single Haiku call (scanner)
+    if (lite) {
+      const technicalData = `Ticker: ${ticker}
 Price: $${price}
 1d: ${data.changePercent}% | 7d: ${pct7d}% | 30d: ${pct30d}%
 RSI(14): ${rsi}
@@ -60,7 +61,40 @@ vs MA50: ${priceVsMA(price, ma50)} | vs MA200: ${priceVsMA(price, ma200)}
 52w range: $${data.low52w}–$${data.high52w} (now ${distFrom52wHigh}% from high, +${distFrom52wLow}% from low)
 ${goldenCross ?? ''}${crossover ? ` ⚡ RECENT ${crossover.toUpperCase().replace('_', ' ')}` : ''}
 ${marketContext}`
-      : `Ticker: ${ticker}
+
+      const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        system: `You are a stock screener for active traders. Analyze technical data objectively.
+Respond ONLY with valid JSON:
+{"signal":"BUY"|"HOLD"|"SELL","confidence":0-100,"reasoning":"1 sentence in Czech","risk":"LOW"|"MEDIUM"|"HIGH","priceTarget":number|null,"horizon":"1 month"|"3 months"|"6 months"|null,"newsSentiment":[]}
+Rules: RSI<35 + uptrend = consider BUY. RSI>65 + downtrend = consider SELL. Be direct, not overly conservative.`,
+        messages: [{ role: 'user', content: technicalData }],
+      })
+
+      const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'
+      const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+      const parsed = JSON.parse(text) as { signal: string; confidence: number; reasoning: string; risk: string; priceTarget?: number | null; horizon?: string | null }
+
+      const signal: Signal = {
+        ticker,
+        signal: parsed.signal as Signal['signal'],
+        confidence: Math.min(100, Math.max(0, parsed.confidence)),
+        reasoning: parsed.reasoning,
+        risk: parsed.risk as Signal['risk'],
+        price: data.price,
+        analyzedAt: new Date().toISOString(),
+        priceTarget: parsed.priceTarget ?? undefined,
+        horizon: parsed.horizon ?? undefined,
+        newsSentiment: [],
+        headlines: [],
+      }
+      saveSignal(signal)
+      return signal
+    }
+
+    // Full mode — Bull / Bear debate + Sonnet synthesis
+    const technicalData = `Ticker: ${ticker}
 Price: $${price}
 Changes: 1d ${data.changePercent}% | 7d ${pct7d}% | 30d ${pct30d}% | 90d ${pct90d}%
 RSI(14): ${rsi} ${rsi < 30 ? '← OVERSOLD' : rsi > 70 ? '← OVERBOUGHT' : ''}
@@ -68,25 +102,55 @@ MACD: ${macd ? `${macd.macd > 0 ? 'positive' : 'negative'}, histogram ${macd.his
 vs MA50: ${priceVsMA(price, ma50)} | vs MA200: ${priceVsMA(price, ma200)}
 ${goldenCross ?? ''}${crossover ? ` ⚡ RECENT ${crossover.toUpperCase().replace('_', ' ')} — strong signal!` : ''}
 52w high: $${data.high52w} (${distFrom52wHigh}%) | 52w low: $${data.low52w} (+${distFrom52wLow}%)
+ATR(14): $${atr ?? 'N/A'} | ATR-based stop: $${atrStop ?? 'N/A'} (1.5× ATR below entry)
 ${marketContext}
 Recent news:\n${headlineLines}`
 
-    const system = lite
-      ? `You are a stock screener for active traders. Analyze technical data objectively.
-Respond ONLY with valid JSON:
-{"signal":"BUY"|"HOLD"|"SELL","confidence":0-100,"reasoning":"1 sentence in Czech","risk":"LOW"|"MEDIUM"|"HIGH","priceTarget":number|null,"horizon":"1 month"|"3 months"|"6 months"|null,"newsSentiment":[]}
-Rules: RSI<35 + uptrend = consider BUY. RSI>65 + downtrend = consider SELL. Be direct, not overly conservative.`
-      : `You are a technical analyst for an active trader. Analyze objectively using all provided data.
+    // Phase 1: parallel bull and bear analyst (Haiku — fast & cheap)
+    const [bullMsg, bearMsg] = await Promise.all([
+      client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 350,
+        system: `You are a BULL analyst. Your job is to find the strongest possible case FOR buying ${ticker}.
+List exactly 3-4 specific bullish arguments based on the technical data. Be direct and specific. Write in Czech.
+Format: numbered list of arguments only, no conclusion.`,
+        messages: [{ role: 'user', content: technicalData }],
+      }),
+      client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 350,
+        system: `You are a BEAR analyst. Your job is to find the strongest possible case AGAINST buying ${ticker}.
+List exactly 3-4 specific bearish risks and warning signs based on the technical data. Be direct and specific. Write in Czech.
+Format: numbered list of risks only, no conclusion.`,
+        messages: [{ role: 'user', content: technicalData }],
+      }),
+    ])
+
+    const bullCase = bullMsg.content[0].type === 'text' ? bullMsg.content[0].text : ''
+    const bearCase = bearMsg.content[0].type === 'text' ? bearMsg.content[0].text : ''
+
+    // Phase 2: Research manager synthesis (Sonnet)
+    const synthesisPrompt = `${technicalData}
+
+=== BULL ANALYTIK (argumenty PRO nákup) ===
+${bullCase}
+
+=== BEAR ANALYTIK (argumenty PROTI nákupu) ===
+${bearCase}
+
+Jako research manager, proveď finální investiční rozhodnutí. Zvaž oba pohledy a rozhodni na základě váhy argumentů a technických dat.`
+
+    const systemPrompt = `You are an investment research manager making a final trading decision after hearing bull and bear analysts.
 Respond ONLY with valid JSON (no markdown):
 {
   "signal": "BUY"|"HOLD"|"SELL",
   "confidence": 0-100,
-  "reasoning": "2-3 sentences in Czech: overall verdict with key evidence",
+  "reasoning": "2-3 sentences in Czech: final verdict explaining which arguments won and why",
   "risk": "LOW"|"MEDIUM"|"HIGH",
   "shortTerm": {
     "signal": "BUY"|"HOLD"|"SELL",
     "confidence": 0-100,
-    "reasoning": "1-2 sentences in Czech: momentum, RSI, MACD, news for next 1-4 weeks",
+    "reasoning": "1-2 sentences in Czech: momentum, RSI, MACD for next 1-4 weeks",
     "stopLoss": number or null,
     "riskReward": number or null
   },
@@ -100,18 +164,18 @@ Respond ONLY with valid JSON (no markdown):
   },
   "newsSentiment": [{"headline":"...","sentiment":"POSITIVE"|"NEUTRAL"|"NEGATIVE"}]
 }
-Rules for signals:
-- BUY: RSI oversold (<35) OR price near 52w low with improving momentum OR MA golden cross OR strong positive catalysts
-- SELL: RSI overbought (>70) with weakening momentum OR MA death cross OR clear downtrend OR negative catalysts
-- HOLD: genuinely mixed signals — not as a default
-- stopLoss: realistic support level (e.g. below MA50, recent swing low). riskReward = (target-entry)/(entry-stop).
-- Be direct and actionable. Do NOT default to HOLD — give the most likely correct signal based on data.`
+Rules:
+- BUY: weight of evidence clearly bullish — oversold RSI, near 52w low, golden cross, strong news
+- SELL: weight of evidence clearly bearish — overbought RSI, near 52w high, death cross, negative news
+- HOLD: genuinely balanced arguments — NOT a default cop-out
+- For stopLoss: prefer ATR-based stop from the data. riskReward = (target-entry)/(entry-stop).
+- Be decisive. The bull vs bear debate already happened — make a clear call.`
 
     const message = await client.messages.create({
-      model,
-      max_tokens: lite ? 300 : 800,
-      system,
-      messages: [{ role: 'user', content: technicalData }],
+      model: 'claude-sonnet-4-6',
+      max_tokens: 900,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: synthesisPrompt }],
     })
 
     const raw = message.content[0].type === 'text' ? message.content[0].text : '{}'

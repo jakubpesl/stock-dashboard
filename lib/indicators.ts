@@ -46,6 +46,13 @@ export function calculateMACD(closes: number[]): { macd: number; signal: number;
   return { macd, signal, histogram: parseFloat((macd - signal).toFixed(4)) }
 }
 
+export function calculateATR(closes: number[], period = 14): number | null {
+  if (closes.length < period + 1) return null
+  const ranges = closes.slice(1).map((c, i) => Math.abs(c - closes[i]))
+  const atr = ranges.slice(-period).reduce((a, b) => a + b, 0) / period
+  return parseFloat(atr.toFixed(2))
+}
+
 export function calcMA(closes: number[], period: number): number | null {
   if (closes.length < period) return null
   return parseFloat((closes.slice(-period).reduce((a, b) => a + b, 0) / period).toFixed(2))

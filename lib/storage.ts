@@ -72,6 +72,9 @@ export interface Fundamentals {
   analystTargetPrice: number | null
   analystCount: number | null
   analystKey: string | null
+  insiderBuys: number
+  insiderSells: number
+  insiderNetValue: number
 }
 
 export interface CacheEntry {
