@@ -201,11 +201,11 @@ export default function ScannerPage() {
             <p className="text-xs text-slate-400 mt-1">Poslední sken: {scannedAt}</p>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 flex-1 sm:flex-none">
             <label className="text-xs text-slate-500 whitespace-nowrap">Styl:</label>
             <select value={thesis} onChange={(e) => setThesis(e.target.value)} disabled={running}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-[#6c63ff]">
+              className="flex-1 sm:flex-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-[#6c63ff]">
               <option value="">Univerzální</option>
               <option value="value">Hodnotové</option>
               <option value="growth">Růstové</option>
@@ -213,15 +213,15 @@ export default function ScannerPage() {
               <option value="garp">GARP</option>
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500 whitespace-nowrap">AI analýz max:</label>
+          <div className="flex items-center gap-2 flex-1 sm:flex-none">
+            <label className="text-xs text-slate-500 whitespace-nowrap">Max AI:</label>
             <select value={aiLimit} onChange={(e) => setAiLimit(Number(e.target.value))} disabled={running}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-[#6c63ff]">
+              className="flex-1 sm:flex-none bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-[#6c63ff]">
               {AI_LIMIT_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <button onClick={runScanner} disabled={running}
-            className="px-5 py-2.5 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px disabled:opacity-60 text-white rounded-lg font-medium transition-all shadow-md shadow-[#6c63ff]/20">
+            className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px disabled:opacity-60 text-white rounded-lg font-medium transition-all shadow-md shadow-[#6c63ff]/20">
             {running ? `${phaseLabel}…` : '🔍 Spustit scanner'}
           </button>
         </div>

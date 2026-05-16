@@ -55,9 +55,9 @@ export async function analyzeStock(ticker: string, lite = false, thesis?: string
       } catch { /* non-critical */ }
     }
 
-    // SEC EDGAR financials context
+    // SEC EDGAR financials context — only in full mode (lite has strict timeout)
     let secContext = ''
-    try {
+    if (!lite) try {
       const sec = await fetchSecFinancials(ticker)
       if (sec) {
         const revStr = sec.revenue.map(r => `${r.year}: ${fmtBig(r.value)}`).join(', ')
@@ -69,6 +69,7 @@ Net Income: ${niStr || 'N/A'}${sec.netMarginLatest !== null ? ` (margin ${sec.ne
 Free Cash Flow: ${fcfStr || 'N/A'}${sec.totalDebt !== null ? `\nTotal Debt: ${fmtBig(sec.totalDebt)}` : ''}`
       }
     } catch { /* non-critical */ }
+
 
     // Investment thesis context
     const thesisContext = thesis && THESIS_LABELS[thesis]
