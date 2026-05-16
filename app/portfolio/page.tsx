@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 const PORT_KEY = 'stock-portfolio'
+const SIG_KEY = 'stock-signals'
+
+interface StoredSignal { signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; price: number; analyzedAt: string }
 
 interface Position {
   id: string
@@ -31,6 +34,8 @@ export default function PortfolioPage() {
   const [positions, setPositions] = useState<Position[]>([])
   const [prices, setPrices] = useState<Record<string, LivePrice>>({})
   const [loading, setLoading] = useState(false)
+  const [signals, setSignals] = useState<Record<string, StoredSignal>>({})
+  const [reanalyzing, setReanalyzing] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [showForm, setShowForm] = useState(false)
 
@@ -43,9 +48,29 @@ export default function PortfolioPage() {
 
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
+  async function reanalyze(symbol: string) {
+    setReanalyzing(symbol)
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickers: [symbol] }),
+      }).then((r) => r.json()) as { results?: StoredSignal[] }
+      if (res.results?.[0]) {
+        const updated = { ...signals, [symbol]: res.results[0] }
+        setSignals(updated)
+        localStorage.setItem(SIG_KEY, JSON.stringify(updated))
+        flash(`✓ ${symbol} re-analyzován`)
+      }
+    } catch { flash('Chyba při analýze') }
+    setReanalyzing(null)
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem(PORT_KEY)
     if (stored) setPositions(JSON.parse(stored))
+    const storedSig = localStorage.getItem(SIG_KEY)
+    if (storedSig) setSignals(JSON.parse(storedSig) as Record<string, StoredSignal>)
   }, [])
 
   useEffect(() => {
@@ -111,7 +136,7 @@ export default function PortfolioPage() {
           <p className="text-slate-500 text-sm mt-1">Sleduj své pozice a výkonnost oproti AI signálům</p>
         </div>
         <button onClick={() => setShowForm((v) => !v)}
-          className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/90 text-white rounded-lg font-medium transition-colors shadow-sm">
+          className="px-5 py-2.5 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px text-white rounded-lg font-medium transition-all shadow-md shadow-[#6c63ff]/20">
           {showForm ? '✕ Zrušit' : '+ Přidat pozici'}
         </button>
       </div>
@@ -132,7 +157,7 @@ export default function PortfolioPage() {
             <input value={fNote} onChange={(e) => setFNote(e.target.value)}
               placeholder="Poznámka (volitelné)" maxLength={60} className={`${inputCls} lg:col-span-1`} />
             <button onClick={addPosition}
-              className="px-4 py-2 bg-[#6c63ff] hover:bg-[#6c63ff]/90 text-white rounded-lg text-sm font-medium transition-colors">
+              className="px-4 py-2 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px text-white rounded-lg text-sm font-medium transition-all shadow-md shadow-[#6c63ff]/20">
               Přidat
             </button>
           </div>
@@ -174,6 +199,7 @@ export default function PortfolioPage() {
                   <th className="text-right px-4 py-3">P&L %</th>
                   <th className="text-left px-4 py-3">Datum</th>
                   <th className="text-left px-4 py-3">Poznámka</th>
+                  <th className="text-center px-4 py-3">AI signál</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -206,6 +232,45 @@ export default function PortfolioPage() {
                       </td>
                       <td className="px-4 py-3.5 text-slate-400">{p.buyDate}</td>
                       <td className="px-4 py-3.5 text-slate-400 max-w-[160px] truncate">{p.note || '—'}</td>
+                      <td className="px-4 py-3.5 text-center">
+                        {(() => {
+                          const sig = signals[p.symbol]
+                          if (!sig) return (
+                            <button onClick={() => reanalyze(p.symbol)} disabled={reanalyzing === p.symbol}
+                              className="text-xs text-[#6c63ff] hover:underline disabled:opacity-50">
+                              {reanalyzing === p.symbol ? '…' : 'Analyzovat'}
+                            </button>
+                          )
+                          const cur = prices[p.symbol]?.price ?? null
+                          const drift = cur !== null ? ((cur - sig.price) / sig.price * 100) : null
+                          const stale = (Date.now() - new Date(sig.analyzedAt).getTime()) > 7 * 86400000
+                          const alert = drift !== null && (
+                            (sig.signal === 'BUY' && drift < -7) ||
+                            (sig.signal === 'SELL' && drift > 7) ||
+                            Math.abs(drift) > 10
+                          )
+                          const sigColors = { BUY: 'text-emerald-600 bg-emerald-50 border-emerald-200', HOLD: 'text-amber-600 bg-amber-50 border-amber-200', SELL: 'text-red-500 bg-red-50 border-red-200' }
+                          const sigLabels = { BUY: 'KUP', HOLD: 'DRŽ', SELL: 'PRODEJ' }
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-bold ${sigColors[sig.signal]}`}>
+                                {sigLabels[sig.signal]}
+                              </span>
+                              {drift !== null && (
+                                <span className={`text-xs tabular-nums ${drift >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                  {drift >= 0 ? '+' : ''}{drift.toFixed(1)}% od anal.
+                                </span>
+                              )}
+                              {(alert || stale) && (
+                                <button onClick={() => reanalyze(p.symbol)} disabled={reanalyzing === p.symbol}
+                                  className="text-xs text-amber-600 hover:text-amber-700 disabled:opacity-50 font-medium">
+                                  {reanalyzing === p.symbol ? '…' : (alert ? '⚠️ Re-analyzovat' : '🔄 Zastaralé')}
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </td>
                       <td className="px-4 py-3.5">
                         <button onClick={() => deletePosition(p.id)}
                           className="text-slate-300 hover:text-red-400 transition-colors text-xs">
@@ -225,7 +290,7 @@ export default function PortfolioPage() {
           <h2 className="text-xl font-bold text-slate-900 mb-2">Portfolio je prázdné</h2>
           <p className="text-slate-500 max-w-md mb-6">Přidej první pozici a sleduj výkonnost svých investic v reálném čase.</p>
           <button onClick={() => setShowForm(true)}
-            className="px-5 py-2.5 bg-[#6c63ff] hover:bg-[#6c63ff]/90 text-white rounded-lg font-medium transition-colors shadow-sm">
+            className="px-5 py-2.5 bg-gradient-to-r from-[#6c63ff] to-[#818cf8] hover:shadow-lg hover:shadow-[#6c63ff]/30 hover:-translate-y-px text-white rounded-lg font-medium transition-all shadow-md shadow-[#6c63ff]/20">
             + Přidat první pozici
           </button>
         </div>

@@ -67,6 +67,7 @@ export default function ScannerPage() {
   const [scannedAt, setScannedAt] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [aiLimit, setAiLimit] = useState(10)
+  const [thesis, setThesis] = useState('')
 
   // Filters
   const [filterSignals, setFilterSignals] = useState<Set<'BUY' | 'HOLD' | 'SELL'>>(new Set(SIGNALS))
@@ -137,7 +138,7 @@ export default function ScannerPage() {
         const analyzeRes = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tickers: [stock.symbol], lite: true }),
+          body: JSON.stringify({ tickers: [stock.symbol], lite: true, thesis: thesis || undefined }),
         }).then((r) => r.json())
 
         const signal = analyzeRes.results?.[0]
@@ -201,6 +202,17 @@ export default function ScannerPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500 whitespace-nowrap">Styl:</label>
+            <select value={thesis} onChange={(e) => setThesis(e.target.value)} disabled={running}
+              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-[#6c63ff]">
+              <option value="">Univerzální</option>
+              <option value="value">Hodnotové</option>
+              <option value="growth">Růstové</option>
+              <option value="dividend">Dividendové</option>
+              <option value="garp">GARP</option>
+            </select>
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500 whitespace-nowrap">AI analýz max:</label>
             <select value={aiLimit} onChange={(e) => setAiLimit(Number(e.target.value))} disabled={running}

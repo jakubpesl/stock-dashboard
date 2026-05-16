@@ -57,6 +57,7 @@ export interface Signal {
   horizon?: string
   shortTerm?: TermSignal
   longTerm?: TermSignal
+  risks?: string[]
   newsSentiment: { headline: string; sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' }[]
   headlines: { title: string; url: string; source: string; publishedAt: string }[]
 }

@@ -5,9 +5,10 @@ import { getSignal, saveSettings, getSettings, getPushSubscriptions } from '@/li
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({})) as { ticker?: string; tickers?: string[]; lite?: boolean }
+    const body = await req.json().catch(() => ({})) as { ticker?: string; tickers?: string[]; lite?: boolean; thesis?: string }
     const symbols: string[] = body.tickers ?? (body.ticker ? [body.ticker] : [])
     const lite = body.lite ?? false
+    const thesis = body.thesis
 
     if (symbols.length === 0) {
       return NextResponse.json({ error: 'No tickers provided' }, { status: 400 })
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
       const prevSignal = getSignal(sym)
       let newSignal
       try {
-        newSignal = await analyzeStock(sym, lite)
+        newSignal = await analyzeStock(sym, lite, thesis)
       } catch (e) {
         errors.push(`${sym}: ${String(e)}`)
         continue

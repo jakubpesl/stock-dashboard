@@ -32,7 +32,7 @@ interface TermSignal {
 interface Signal {
   signal: 'BUY' | 'HOLD' | 'SELL'; confidence: number; risk: string
   reasoning: string; analyzedAt: string; price: number
-  priceTarget?: number; horizon?: string
+  priceTarget?: number; horizon?: string; risks?: string[]
   shortTerm?: TermSignal; longTerm?: TermSignal
   newsSentiment: { headline: string; sentiment: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' }[]
   headlines: { title: string; url: string; source: string; publishedAt: string }[]
@@ -46,6 +46,23 @@ interface FinnhubNews {
 interface FinnhubInsider {
   netBuys: number; netSells: number; netShares: number; totalValue: number
   transactions: { name: string; shares: number; price: number; date: string; type: 'BUY' | 'SELL' }[]
+}
+interface SecFinancials {
+  revenue: { year: number; value: number }[]
+  netIncome: { year: number; value: number }[]
+  freeCashFlow: { year: number; value: number }[]
+  totalDebt: number | null
+  revenueGrowthYoY: number | null
+  netMarginLatest: number | null
+}
+
+function fmtBig(n: number): string {
+  const abs = Math.abs(n)
+  const sign = n < 0 ? '-' : ''
+  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(2)}T`
+  if (abs >= 1e9)  return `${sign}$${(abs / 1e9).toFixed(2)}B`
+  if (abs >= 1e6)  return `${sign}$${(abs / 1e6).toFixed(1)}M`
+  return `${sign}$${abs.toLocaleString()}`
 }
 
 function fmtCap(n: number) {
@@ -66,6 +83,7 @@ export default function StockDetail() {
   const [insiders, setInsiders] = useState<FinnhubInsider | null>(null)
   const [earnings, setEarnings] = useState<EarningsSurprise[]>([])
   const [finnhubNews, setFinnhubNews] = useState<FinnhubNews[]>([])
+  const [secFinancials, setSecFinancials] = useState<SecFinancials | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeMsg, setAnalyzeMsg] = useState('')
 
@@ -79,6 +97,7 @@ export default function StockDetail() {
         setInsiders(json.insiders ?? null)
         setEarnings(json.earnings ?? [])
         setFinnhubNews(json.finnhubNews ?? [])
+        setSecFinancials(json.secFinancials ?? null)
         if (json.signal) {
           setSignal(json.signal)
         } else {
@@ -391,12 +410,73 @@ export default function StockDetail() {
           {/* Summary + risk */}
           <div className="pt-3 border-t border-slate-100">
             <p className="text-slate-600 text-sm leading-relaxed mb-2">{signal.reasoning}</p>
-            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-              Riziko:
-              <span className={`font-semibold ${signal.risk === 'LOW' ? 'text-emerald-600' : signal.risk === 'HIGH' ? 'text-red-500' : 'text-amber-600'}`}>
-                {signal.risk === 'LOW' ? 'Nízké' : signal.risk === 'HIGH' ? 'Vysoké' : 'Střední'}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+                Riziko:
+                <span className={`font-semibold ${signal.risk === 'LOW' ? 'text-emerald-600' : signal.risk === 'HIGH' ? 'text-red-500' : 'text-amber-600'}`}>
+                  {signal.risk === 'LOW' ? 'Nízké' : signal.risk === 'HIGH' ? 'Vysoké' : 'Střední'}
+                </span>
               </span>
-            </span>
+              {signal.risks && signal.risks.length > 0 && signal.risks.map((r, i) => (
+                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-full">
+                  ⚠️ {r}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SEC EDGAR financials */}
+      {secFinancials && secFinancials.revenue.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-5 shadow-sm">
+          <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
+            <h3 className="accent-heading">Finanční výkazy (SEC EDGAR)</h3>
+            <div className="flex gap-3 text-xs text-slate-500 flex-wrap">
+              {secFinancials.revenueGrowthYoY !== null && (
+                <span className={`font-semibold ${secFinancials.revenueGrowthYoY >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  Tržby YoY {secFinancials.revenueGrowthYoY >= 0 ? '+' : ''}{secFinancials.revenueGrowthYoY}%
+                </span>
+              )}
+              {secFinancials.netMarginLatest !== null && (
+                <span className={`font-semibold ${secFinancials.netMarginLatest >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  Čistá marže {secFinancials.netMarginLatest}%
+                </span>
+              )}
+              {secFinancials.totalDebt !== null && (
+                <span className="text-slate-500">Dluh {fmtBig(secFinancials.totalDebt)}</span>
+              )}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                  <th className="text-left pb-2">Rok</th>
+                  <th className="text-right pb-2">Tržby</th>
+                  <th className="text-right pb-2">Čistý zisk</th>
+                  <th className="text-right pb-2">Free Cash Flow</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {secFinancials.revenue.map((rev) => {
+                  const ni = secFinancials.netIncome.find(n => n.year === rev.year)
+                  const fcf = secFinancials.freeCashFlow.find(f => f.year === rev.year)
+                  return (
+                    <tr key={rev.year}>
+                      <td className="py-2.5 text-slate-500 font-medium">{rev.year}</td>
+                      <td className="py-2.5 text-right font-semibold text-slate-900 tabular-nums">{fmtBig(rev.value)}</td>
+                      <td className="py-2.5 text-right tabular-nums">
+                        {ni ? <span className={`font-semibold ${ni.value >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{fmtBig(ni.value)}</span> : '—'}
+                      </td>
+                      <td className="py-2.5 text-right tabular-nums">
+                        {fcf ? <span className={`font-semibold ${fcf.value >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{fmtBig(fcf.value)}</span> : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

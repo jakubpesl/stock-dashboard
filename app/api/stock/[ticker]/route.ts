@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchStockData, fetchEarningsDate, fetchFundamentals } from '@/lib/yahooFinance'
 import { fetchFinnhubInsiders, fetchEarningsSurprises, fetchFinnhubNews } from '@/lib/finnhub'
+import { fetchSecFinancials } from '@/lib/secEdgar'
 import { getSignal } from '@/lib/storage'
 
 export async function GET(
@@ -18,7 +19,7 @@ export async function GET(
     return NextResponse.json({ data, signal })
   }
 
-  const [data, signal, earningsDate, fundamentals, insiders, earnings, finnhubNews] = await Promise.all([
+  const [data, signal, earningsDate, fundamentals, insiders, earnings, finnhubNews, secFinancials] = await Promise.all([
     fetchStockData(ticker),
     Promise.resolve(getSignal(ticker)),
     fetchEarningsDate(ticker),
@@ -26,6 +27,7 @@ export async function GET(
     fetchFinnhubInsiders(ticker),
     fetchEarningsSurprises(ticker),
     fetchFinnhubNews(ticker),
+    fetchSecFinancials(ticker),
   ])
-  return NextResponse.json({ data, signal, earningsDate, fundamentals, insiders, earnings, finnhubNews })
+  return NextResponse.json({ data, signal, earningsDate, fundamentals, insiders, earnings, finnhubNews, secFinancials })
 }
