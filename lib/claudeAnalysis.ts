@@ -38,9 +38,9 @@ export async function analyzeStock(ticker: string, lite = false, thesis?: string
     const crossover = detectCrossover(closes)
     const atrStop = atr ? parseFloat((price - 1.5 * atr).toFixed(2)) : null
 
-    // Market context — SPY trend
+    // Market context — SPY trend (skip in lite mode to stay within Vercel 10s timeout)
     let marketContext = ''
-    if (ticker !== 'SPY') {
+    if (!lite && ticker !== 'SPY') {
       try {
         const spy = await fetchStockData('SPY')
         if (spy) {
